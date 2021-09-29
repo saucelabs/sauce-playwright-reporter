@@ -1,0 +1,32 @@
+{
+  "name": "@saucelabs/playwright-reporter",
+  "version": "0.0.0",
+  "description": "Reports your tests to Sauce Labs",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/saucelabs/sauce-playwright-reporter.git"
+  },
+  "author": "devx <devx@saucelabs.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/saucelabs/sauce-playwright-reporter/issues"
+  },
+  "homepage": "https://github.com/saucelabs/sauce-playwright-reporter#readme",
+  "dependencies": {
+    "saucelabs": "^6.0.2",
+    "shelljs": "^0.8.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.15.0",
+    "eslint": "^7.32.0",
+    "release-it": "^14.11.6"
+  }
+}
