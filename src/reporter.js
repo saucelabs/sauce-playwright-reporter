@@ -16,6 +16,7 @@ class MyReporter {
   constructor () {
     this.files = {};
     this.durations = {};
+    this.config = {};
 
     this.region = 'us-west-1';
     this.tld = this.region === 'staging' ? 'net' : 'com';
@@ -32,6 +33,8 @@ class MyReporter {
 
   onBegin (config, suite) {
     console.log(`Starting the run with ${suite.allTests().length} tests`);
+    this.config.buildName = config.projects[0]?.use?.sauce?.buildName;
+    this.config.tags = config.projects[0]?.use?.sauce?.tags;
   }
 
   onTestBegin (test) {
@@ -77,12 +80,12 @@ class MyReporter {
       const consoleFilename = await this.constructConsoleLog(this.files[file], token);
 
       const body = this.createBody({
-        suiteName: `My Playwright suite - ${file}`,
+        suiteName: `${this.config.buildName} - ${file}`,
         startedAt: startedAt.toISOString(),
         endedAt: endedAt.toISOString(),
         success: status === 'passed',
-        tags: [], // To carry from env/config
-        build: 'My Playwright suite', // To carry from env/config
+        tags: this.config.tags || [],
+        build: this.config.buildName,
         browserName: 'chrome', // Not available
         browserVersion: '1.0.0', // Not available
       });
@@ -90,13 +93,24 @@ class MyReporter {
       this.sessionId = await this.createJob(body);
       if (this.sessionId) {
         console.log("SessionID:", this.sessionId);
+
         const webmVideos = this.files[file].tests.map(t => t.video);
         const videosPath = await this.processVideos(webmVideos, token);
-        await this.uploadAssets(this.sessionId, consoleFilename, videosPath);
+        const screenshots = this.gatherScreenshots(this.files[file].tests);
+        await this.uploadAssets(this.sessionId, consoleFilename, videosPath, screenshots);
       }
     }
-
     await this.removeTmpFolder(this.workDir);
+  }
+
+  gatherScreenshots (tests) {
+    const screenshots = [];
+    for (const t of tests) {
+      for (const ss of t.screenshots) {
+        screenshots.push(ss);
+      }
+    }
+    return screenshots;
   }
 
   async processVideos(webmVideos, token) {
