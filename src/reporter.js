@@ -19,7 +19,13 @@ class MyReporter {
     this.projects = {};
     this.rootProject = undefined;
 
-    this.region = 'us-west-1';
+    this.workDir = this.createTmpFolder();
+  }
+
+  onBegin (config, suite) {
+    this.buildName = config.projects[0]?.use?.sauce?.buildName;
+    this.tags = config.projects[0]?.use?.sauce?.tags;
+    this.region = config.projects[0]?.use?.sauce?.region || 'us-west-1';
     this.tld = this.region === 'staging' ? 'net' : 'com';
 
     this.api = new SauceLabs({
@@ -29,12 +35,6 @@ class MyReporter {
       tld: this.tld,
     });
 
-    this.workDir = this.createTmpFolder();
-  }
-
-  onBegin (config, suite) {
-    this.buildName = config.projects[0]?.use?.sauce?.buildName;
-    this.tags = config.projects[0]?.use?.sauce?.tags;
     this.rootProject = suite;
 
     for (const cfg of config.projects) {
