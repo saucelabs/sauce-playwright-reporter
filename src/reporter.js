@@ -12,8 +12,8 @@ const { exec } = require('./utils');
 
 class MyReporter {
   constructor () {
-    this.files = {};
-    this.durations = {};
+    this.jobUrls = [];
+
     this.buildName = undefined;
     this.tags = [];
     this.projects = {};
@@ -57,6 +57,15 @@ class MyReporter {
       }
     }
     await this.removeTmpFolder();
+    this.displayReportedJobs(this.jobUrls);
+  }
+
+  displayReportedJobs (jobs) {
+    console.log(`\nReported jobs to Sauce Labs:`);
+    for (const job of jobs) {
+      console.log(`  - ${job.url}`);
+    }
+    console.log();
   }
 
   async contructLogFile (project, file, token) {
@@ -107,6 +116,11 @@ class MyReporter {
     });
     const sessionID = await this.createJob(jobBody);
     await this.uploadAssets(sessionID, consoleLogFilename, assets.videos, assets.screenshots);
+
+    this.jobUrls.push({
+      url: this.getJobUrl(sessionID, this.region, this.tld),
+      name: suiteName,
+    });
   }
 
   findFirstStartedAt (suite) {
@@ -326,6 +340,13 @@ class MyReporter {
       default:
         'unknown';
     }
+  }
+
+  getJobUrl (sessionId, region, tld) {
+    if (region === 'us-west-1') {
+      return `https://app.saucelabs.com/tests/${sessionId}`
+    }
+    return `https://app.${region}.saucelabs.${tld}/tests/${sessionId}`;
   }
 }
 
