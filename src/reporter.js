@@ -8,15 +8,15 @@ const crypto = require('crypto');
 const { tmpdir } = require('os');
 const SauceLabs = require('saucelabs').default;
 
-const { Reporter } = require('@playwright/test/reporter');
-
 const { exec } = require('./utils');
 
 class MyReporter {
   constructor () {
     this.files = {};
     this.durations = {};
-    this.config = {};
+    this.buildName = undefined;
+    this.tags = [];
+    this.projects = {};
     this.rootProject = undefined;
 
     this.region = 'us-west-1';
@@ -33,10 +33,13 @@ class MyReporter {
   }
 
   onBegin (config, suite) {
-    console.log(`Starting the run with ${suite.allTests().length} tests`);
-    this.config.buildName = config.projects[0]?.use?.sauce?.buildName;
-    this.config.tags = config.projects[0]?.use?.sauce?.tags;
+    this.buildName = config.projects[0]?.use?.sauce?.buildName;
+    this.tags = config.projects[0]?.use?.sauce?.tags;
     this.rootProject = suite;
+
+    for (const cfg of config.projects) {
+      this.projects[cfg.name] = cfg;
+    }
   }
 
   onTestBegin (test) {
@@ -76,9 +79,12 @@ class MyReporter {
     const token = this.randomString();
     await mkdir(path.join(this.workDir, token));
 
+    // Select project configuration and default to first available project.
+    const projectConfig = this.projects[project.title] || this.projects[Object.keys(this.projects)[0]];
+
     const consoleLogFilename = await this.contructLogFile(project, file, token);
 
-    // SScreenshot / Video management
+    // Screenshot / Video management
     const assets = this.getVideosAndScreenshots(file);
     assets.videos = await this.processVideos(assets.videos, token);
 
@@ -89,14 +95,14 @@ class MyReporter {
     
     const suiteName = project.title ? `${project.title} - ${file.title}` : `${file.title}`;
     const jobBody = this.createBody({
-      browserName: 'unknown',
+      browserName: projectConfig?.use?.browserName || 'unknown',
       browserVersion: '1.0',
-      build: this.config.buildName || project.title,
+      build: this.buildName,
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
       success: passed,
       suiteName: suiteName,
-      tags: this.config.tags || [],
+      tags: this.tags || [],
     });
     const sessionID = await this.createJob(jobBody);
     await this.uploadAssets(sessionID, consoleLogFilename, assets.videos, assets.screenshots);
