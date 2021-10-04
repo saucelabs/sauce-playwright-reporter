@@ -17,6 +17,7 @@ class MyReporter {
     this.files = {};
     this.durations = {};
     this.config = {};
+    this.rootProject = undefined;
 
     this.region = 'us-west-1';
     this.tld = this.region === 'staging' ? 'net' : 'com';
@@ -35,82 +36,167 @@ class MyReporter {
     console.log(`Starting the run with ${suite.allTests().length} tests`);
     this.config.buildName = config.projects[0]?.use?.sauce?.buildName;
     this.config.tags = config.projects[0]?.use?.sauce?.tags;
+    this.rootProject = suite;
   }
 
   onTestBegin (test) {
-    const categoryName = test.parent?.title;
-    if (!this.durations[categoryName]) {
-      this.durations[categoryName] = { startedAt: new Date() };
+    test.startedAt = new Date();
+  }
+
+  onTestEnd (test) {
+    test.endedAt = new Date();
+  }
+
+  async onEnd () {
+    for (const project of this.rootProject.suites) {
+      for (const file of project.suites) {
+        await this.reportFile(project, file);
+      }
     }
   }
 
-  onTestEnd (test, result) {
-    const categoryName = test.parent?.title;
-    this.durations[categoryName].endedAt = new Date();
-    this.registerTestResult(test, result);
+  async contructLogFile (project, file, token) {
+    let consoleLog = `Project: ${project.title}\nFile: ${file.title}\n\n`;
+
+    consoleLog = consoleLog.concat(
+      this.formatTestCasesResults(file.tests, '')
+    );
+
+    for (const suite of file.suites) {
+      consoleLog = consoleLog.concat(
+        this.formatSuiteResult(suite)
+      );
+    }
+    const consoleLogFilename = path.join(this.workDir, token, 'console.log')
+    await writeFile(consoleLogFilename, consoleLog);
+    return consoleLogFilename;
   }
 
-  async onEnd (result) {
-    await this.publishResults(result);
-  }
+  async reportFile(project, file) {
+    const token = this.randomString();
+    await mkdir(path.join(this.workDir, token));
 
-  /* Custom made funcs */
-  registerTestResult (test, result) {
-    const fileName = test.parent?.title;
+    const consoleLogFilename = await this.contructLogFile(project, file, token);
 
-    const specResults = this.files[fileName] || { fileName, tests: [] };
+    // SScreenshot / Video management
+    const assets = this.getVideosAndScreenshots(file);
+    assets.videos = await this.processVideos(assets.videos, token);
+
+    // Global info
+    const startedAt = this.findFirstStartedAt(file);
+    const endedAt = this.findLastEndedAt(file);
+    const passed = this.hasPassed(file);
     
-    specResults.tests.push({
-      title: test.title,
-      status: result.status,
-      duration: result.duration,
-      screenshots: result.attachments.filter(file => file.name !== 'video').map(file => file.path),
-      video: (result.attachments.filter(file => file.name === 'video').map(file => file.path))[0],
+    const suiteName = project.title ? `${project.title} - ${file.title}` : `${file.title}`;
+    const jobBody = this.createBody({
+      browserName: 'unknown',
+      browserVersion: '1.0',
+      build: this.config.buildName || project.title,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      success: passed,
+      suiteName: suiteName,
+      tags: this.config.tags || [],
     });
-    this.files[fileName] = specResults;
+    const sessionID = await this.createJob(jobBody);
+    await this.uploadAssets(sessionID, consoleLogFilename, assets.videos, assets.screenshots);
   }
 
-  /* Export Results */
-  async publishResults ({ status }) {
-    for (const file of Object.keys(this.files)) {
-      const { startedAt, endedAt } = this.durations[file];
-
-      const token = this.randomString();
-      await mkdir(path.join(this.workDir, token));
-      const consoleFilename = await this.constructConsoleLog(this.files[file], token);
-
-      const body = this.createBody({
-        suiteName: `${this.config.buildName} - ${file}`,
-        startedAt: startedAt.toISOString(),
-        endedAt: endedAt.toISOString(),
-        success: status === 'passed',
-        tags: this.config.tags || [],
-        build: this.config.buildName,
-        browserName: 'chrome', // Not available
-        browserVersion: '1.0.0', // Not available
-      });
-  
-      this.sessionId = await this.createJob(body);
-      if (this.sessionId) {
-        console.log("SessionID:", this.sessionId);
-
-        const webmVideos = this.files[file].tests.map(t => t.video);
-        const videosPath = await this.processVideos(webmVideos, token);
-        const screenshots = this.gatherScreenshots(this.files[file].tests);
-        await this.uploadAssets(this.sessionId, consoleFilename, videosPath, screenshots);
+  findFirstStartedAt (suite) {
+    let minDate;
+    for (const test of suite.tests) {
+      if (!minDate || test.startedAt < minDate) {
+        minDate = test.startedAt;
       }
     }
-    await this.removeTmpFolder(this.workDir);
+    for (const subSuite of suite.suites) {
+      const subMinDate = this.findFirstStartedAt(subSuite);
+      if (!minDate || subMinDate < minDate) {
+        minDate = subMinDate;
+      }
+    }
+    return minDate;
   }
 
-  gatherScreenshots (tests) {
-    const screenshots = [];
-    for (const t of tests) {
-      for (const ss of t.screenshots) {
-        screenshots.push(ss);
+  findLastEndedAt (suite) {
+    let maxDate;
+    for (const test of suite.tests) {
+      if (!maxDate || test.startedAt < maxDate) {
+        maxDate = test.startedAt;
       }
     }
-    return screenshots;
+    for (const subSuite of suite.suites) {
+      const subMaxDate = this.findLastEndedAt(subSuite);
+      if (!maxDate || maxDate < subMaxDate) {
+        maxDate = subMaxDate;
+      }
+    }
+    return maxDate;
+  }
+
+  hasPassed (suite) {
+    for (const testCase of suite.tests) {
+      const result = testCase.results.map(x => x.status).filter(x => x == 'passed' ).length > 0;
+      if (!result) {
+        return false;
+      }
+    }
+    for (const subSuite of suite.suites) {
+      if (!this.hasPassed(subSuite)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  formatSuiteResult(suite, level = 0) {
+    const padding = '  '.repeat(level);
+
+    let consoleLog = `\n${padding}${suite.title}:\n`
+
+    consoleLog = consoleLog.concat(
+      this.formatTestCasesResults(suite.tests, padding)
+    );
+
+    for (const subSuite of suite.suites) {
+      consoleLog = consoleLog.concat(
+        this.formatSuiteResult(subSuite, level+1)
+      );
+    }
+    return consoleLog;
+  }
+
+  formatTestCasesResults(testCases, padding) {
+    let consoleLog = '';
+    for (const testCase of testCases) {
+      const ico = testCase.results.map(x => x.status).filter(x => x == 'passed' ).length > 0 ? '✓' : '✗';
+      consoleLog = consoleLog.concat(`${padding}${ico} ${testCase.title}\n`);
+    }
+    return consoleLog;
+  }
+
+  getVideosAndScreenshots(suite) {
+    const assets = { videos: [], screenshots: [] };
+
+    for (const testCase of suite.tests) {
+      for (const result of testCase.results) {
+        for (const attachment of result.attachments) {
+          if (attachment.name === 'video') {
+            assets.videos.push(attachment.path);
+          } else {
+            assets.screenshots.push(attachment.path);
+          }
+        }
+      }
+    }
+
+    for (const subSuite of suite.suites) {
+      const { videos: subVideos, screenshots: subScreenshots } = this.getVideosAndScreenshots(subSuite);
+      assets.videos.push(...subVideos);
+      assets.screenshots.push(...subScreenshots);
+    }
+
+    return assets;
   }
 
   async processVideos(webmVideos, token) {
@@ -137,21 +223,6 @@ class MyReporter {
     const displayVideo = path.join(this.workDir, token, 'video.mp4');
     await copyFile(mp4Videos[0], displayVideo);
     return [displayVideo, ...mp4Videos];
-  }
-
-  async constructConsoleLog (file, token) {
-    let consoleLog = `${file.fileName}\n`;
-
-    for (const test of file.tests) {
-      const status = test.status === 'passed' ? '✓' : '✗';
-      consoleLog = consoleLog.concat(`  ${status} ${test.title} (${test.duration}ms)\n`);
-    }
-
-    consoleLog = consoleLog.concat(`\n`);
-
-    const consoleFilename = path.join(this.workDir, token, 'console.log');
-    await writeFile(consoleFilename, consoleLog);
-    return consoleFilename;
   }
 
   async uploadAssets (sessionId, consoleLog, videosPath = [], screenshots = []) {
