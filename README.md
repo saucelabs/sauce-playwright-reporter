@@ -6,7 +6,7 @@ This Playwright plugins reports each spec to your Sauce Labs account.
 
 Install from npm:
 ```
-npm install @saucelabs/playwright-plugin
+npm install @saucelabs/playwright-reporter
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ Your Sauce Labs Username and Access Key are available from your
 
 ### Plugin configuration
 
-`@saucelabs/playwright-plugin` is configurable through your `playwright.config.json` file.
+`@saucelabs/playwright-plugin` is configurable through your `playwright.config.js` or `playwright.config.ts` file.
 
 A `sauce` section can be added in `use` field of the config object.
 
