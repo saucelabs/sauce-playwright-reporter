@@ -56,6 +56,7 @@ class MyReporter {
         await this.reportFile(project, file);
       }
     }
+    await this.removeTmpFolder();
   }
 
   async contructLogFile (project, file, token) {
@@ -287,7 +288,7 @@ class MyReporter {
       build: build,
       browserName,
       browserVersion,
-      platformName: 'mac',
+      platformName: this.getOsName(),
       saucectlVersion: 'v0.0.0',
     };
   }
@@ -311,6 +312,19 @@ class MyReporter {
       await rmdir(workdir, { recursive: true });
     } catch (e) {
       console.warn(`@saucelabs/playwright-reporter: Failed to remove tmp directory ${workdir}: ${e.message}`);
+    }
+  }
+
+  getOsName () {
+    switch (process.platform) {
+      case 'darwin':
+        return 'mac';
+      case 'win32':
+        return 'windows';
+      case 'linux':
+        return 'linux';
+      default:
+        'unknown';
     }
   }
 }
