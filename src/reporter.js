@@ -6,6 +6,7 @@ const { mkdir, rmdir, writeFile, copyFile } = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const { tmpdir } = require('os');
+
 const SauceLabs = require('saucelabs').default;
 
 const { exec } = require('./utils');
@@ -99,10 +100,10 @@ class MyReporter {
     assets.videos = await this.processVideos(assets.videos, token);
 
     // Global info
-    const startedAt = this.findFirstStartedAt(file);
-    const endedAt = this.findLastEndedAt(file);
+    const startedAt = this.findFirstStartedAt(file) || new Date();
+    const endedAt = this.findLastEndedAt(file) || new Date();
     const passed = this.hasPassed(file);
-    
+
     const suiteName = project.title ? `${project.title} - ${file.title}` : `${file.title}`;
     const jobBody = this.createBody({
       browserName: projectConfig?.use?.browserName || 'unknown',
