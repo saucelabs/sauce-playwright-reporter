@@ -24,6 +24,13 @@ class MyReporter {
   }
 
   onBegin (config, suite) {
+    let reporterVersion = 'unknown';
+    try {
+      const packageData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+      reporterVersion = packageData.version;
+    // eslint-disable-next-line no-empty
+    } catch (e) {}
+
     this.buildName = config.projects[0]?.use?.sauce?.buildName;
     this.tags = config.projects[0]?.use?.sauce?.tags;
     this.region = config.projects[0]?.use?.sauce?.region || 'us-west-1';
@@ -34,6 +41,7 @@ class MyReporter {
       key: process.env.SAUCE_ACCESS_KEY,
       region: this.region,
       tld: this.tld,
+      headers: {'User-Agent': `playwright-reporter/${reporterVersion}`},
     });
 
     this.rootProject = suite;
