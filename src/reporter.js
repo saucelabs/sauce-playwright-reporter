@@ -2,14 +2,11 @@
 // @ts-check
 
 const fs = require('fs');
-const { mkdir, rmdir, writeFile, copyFile } = require('fs/promises');
+const { readFile } = require('fs/promises');
 const path = require('path');
-const crypto = require('crypto');
-const { tmpdir } = require('os');
 
 const SauceLabs = require('saucelabs').default;
 
-const { exec } = require('./utils');
 
 class MyReporter {
   constructor () {
@@ -19,8 +16,6 @@ class MyReporter {
     this.tags = [];
     this.projects = {};
     this.rootProject = undefined;
-
-    this.workDir = this.createTmpFolder();
   }
 
   onBegin (config, suite) {
@@ -65,7 +60,6 @@ class MyReporter {
         await this.reportFile(project, file);
       }
     }
-    await this.removeTmpFolder();
     this.displayReportedJobs(this.jobUrls);
   }
 
@@ -77,7 +71,7 @@ class MyReporter {
     console.log();
   }
 
-  async contructLogFile (project, file, token) {
+  contructLogFile (project, file) {
     let consoleLog = `Project: ${project.title}\nFile: ${file.title}\n\n`;
 
     consoleLog = consoleLog.concat(
@@ -89,23 +83,18 @@ class MyReporter {
         this.formatSuiteResult(suite)
       );
     }
-    const consoleLogFilename = path.join(this.workDir, token, 'console.log')
-    await writeFile(consoleLogFilename, consoleLog);
-    return consoleLogFilename;
+    return consoleLog;
   }
 
   async reportFile(project, file) {
-    const token = this.randomString();
-    await mkdir(path.join(this.workDir, token));
 
     // Select project configuration and default to first available project.
     const projectConfig = this.projects[project.title] || this.projects[Object.keys(this.projects)[0]];
 
-    const consoleLogFilename = await this.contructLogFile(project, file, token);
+    const consoleLog = this.contructLogFile(project, file);
 
     // Screenshot / Video management
     const assets = this.getVideosAndScreenshots(file);
-    assets.videos = await this.processVideos(assets.videos, token);
 
     // Global info
     const startedAt = this.findFirstStartedAt(file) || new Date();
@@ -124,7 +113,7 @@ class MyReporter {
       tags: this.tags || [],
     });
     const sessionID = await this.createJob(jobBody);
-    await this.uploadAssets(sessionID, consoleLogFilename, assets.videos, assets.screenshots);
+    await this.uploadAssets(sessionID, consoleLog, assets.videos, assets.screenshots);
 
     this.jobUrls.push({
       url: this.getJobUrl(sessionID, this.region, this.tld),
@@ -229,37 +218,25 @@ class MyReporter {
     return assets;
   }
 
-  async processVideos(webmVideos, token) {
-    if (webmVideos.length == 0) {
-      return;
-    }
-
-    const mp4Videos = [];
-
-    for (const webmVideo of webmVideos) {
-      const filename = path.basename(webmVideo);
-      const mp4Filename = filename.replace(/\.webm$/, '.mp4');
-      const mp4VideoPath = path.join(this.workDir, token, mp4Filename);
-
-      try {
-        await exec(`ffmpeg -i ${webmVideo} ${mp4VideoPath}`, {suppressLogs: true});
-      } catch (e) {
-        console.error(`Failed to convert ${webmVideo} to mp4: '${e}'`);
-        return 
-      }
-      mp4Videos.push(mp4VideoPath)
-    }
-
-    const displayVideo = path.join(this.workDir, token, 'video.mp4');
-    await copyFile(mp4Videos[0], displayVideo);
-    return [displayVideo, ...mp4Videos];
-  }
-
   async uploadAssets (sessionId, consoleLog, videosPath = [], screenshots = []) {
     const assets = [];
 
-    assets.push(consoleLog);
-    assets.push(...videosPath);
+    assets.push({
+      filename: 'console.log',
+      data: consoleLog
+    });
+    if (videosPath.length > 1) {
+      assets.push(...videosPath);
+      try {
+        const videoData = await readFile(videosPath[0]);
+        assets.push({
+          filename: 'video.webm',
+          data: videoData,
+        });
+      } catch (e) {
+        console.log(`@saucelabs/cypress-plugin: unable to report video file ${videosPath[0]}: ${e}`);
+      }
+    }
     assets.push(...screenshots);
 
     await Promise.all([
@@ -312,30 +289,7 @@ class MyReporter {
       browserName,
       browserVersion,
       platformName: this.getOsName(),
-      saucectlVersion: 'v0.0.0',
     };
-  }
-
-  createTmpFolder () {
-    const workdir = path.join(tmpdir(), `sauce-playwright-reporter-${this.randomString()}`);
-    fs.mkdirSync(workdir);
-    return workdir;
-  }
-
-  randomString () {
-    return crypto.randomBytes(6).readUIntLE(0,6).toString(36);
-  }
-
-  async removeTmpFolder (workdir) {
-    if (!workdir) {
-      return;
-    }
-
-    try {
-      await rmdir(workdir, { recursive: true });
-    } catch (e) {
-      console.warn(`@saucelabs/playwright-reporter: Failed to remove tmp directory ${workdir}: ${e.message}`);
-    }
   }
 
   getOsName () {
