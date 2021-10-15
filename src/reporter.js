@@ -9,13 +9,16 @@ const SauceLabs = require('saucelabs').default;
 
 
 class MyReporter {
-  constructor () {
+  constructor (config) {
     this.jobUrls = [];
 
-    this.buildName = undefined;
-    this.tags = [];
     this.projects = {};
     this.rootProject = undefined;
+
+    this.buildName = config?.buildName;
+    this.tags = config?.tags || [];
+    this.region = config?.region || 'us-west-1';
+    this.tld = this.region === 'staging' ? 'net' : 'com';
   }
 
   onBegin (config, suite) {
@@ -25,11 +28,6 @@ class MyReporter {
       reporterVersion = packageData.version;
     // eslint-disable-next-line no-empty
     } catch (e) {}
-
-    this.buildName = config.projects[0]?.use?.sauce?.buildName;
-    this.tags = config.projects[0]?.use?.sauce?.tags;
-    this.region = config.projects[0]?.use?.sauce?.region || 'us-west-1';
-    this.tld = this.region === 'staging' ? 'net' : 'com';
 
     this.api = new SauceLabs({
       user: process.env.SAUCE_USERNAME,
@@ -103,7 +101,7 @@ class MyReporter {
 
     const suiteName = project.title ? `${project.title} - ${file.title}` : `${file.title}`;
     const jobBody = this.createBody({
-      browserName: projectConfig?.use?.browserName || 'unknown',
+      browserName: projectConfig?.use?.browserName || 'chromium',
       browserVersion: '1.0',
       build: this.buildName,
       startedAt: startedAt?.toISOString(),

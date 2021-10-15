@@ -21,6 +21,17 @@ Use only `@saucelabs/playwright-reporter`:
 npx playwright test  --reporter=@saucelabs/playwright-reporter
 ```
 
+You can also configure using `playwright.config.js`. To achieve that, add `'@saucelabs/playwright-reporter'` to the reporter section of your configuration:
+```
+const config = {
+  reporter: [
+    ['@saucelabs/playwright-reporter'],
+  ],
+  // Rest of your config goes here
+};
+```
+
+
 ### Sauce Labs credentials
 
 `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` environment variables needs to be set to
@@ -32,22 +43,20 @@ Your Sauce Labs Username and Access Key are available from your
 
 `@saucelabs/playwright-plugin` is configurable through your `playwright.config.js` or `playwright.config.ts` file.
 
-A `sauce` section can be added in `use` field of the config object.
-
 Example:
 ```
 const config = {
-  use: {
-    video: 'on',
-    sauce: {
-      buildName: 'My Playwright Suite',
+  reporter: [
+    ['@saucelabs/playwright-reporter', {
+      buildName: 'My Playwright Build',
       region: 'us-west-1',
       tags: [
         'playwright',
         'demo',
       ],
-    },
-  }
+    }],
+  ],
+  // Rest of your config goes here
 };
 ```
 
@@ -62,5 +71,4 @@ const config = {
 Some limitations applies to `@saucelabs/playwright-reporter`:
 * Playwright version is not reported to Sauce Labs
 * Browser version is not reported to Sauce Labs
-* If no browser is specified (CLI or Config), no browser is reported to Sauce Labs
 * If two suites shares the same name, reports may be inacurate
