@@ -1,0 +1,20 @@
+{
+  "name": "playwright-reporter-test",
+  "version": "0.0.0",
+  "description": "Tests your tests to Sauce Labs",
+  "scripts": {},
+  "author": "devx <devx@saucelabs.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/saucelabs/sauce-playwright-reporter/issues"
+  },
+  "homepage": "https://github.com/saucelabs/sauce-playwright-reporter#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.15.0",
+    "axios": "^0.23.0",
+    "playwright": "^1.15.0"
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "testMatch": ["<rootDir>/tests/integration/playwright.spec.js"],
+  "testTimeout": 180000
+}
