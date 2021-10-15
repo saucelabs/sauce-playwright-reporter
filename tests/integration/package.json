@@ -1,7 +1,7 @@
 {
   "name": "playwright-reporter-test",
   "version": "0.0.0",
-  "description": "Tests your tests to Sauce Labs",
+  "description": "Project to test sauce-playwright-reporter",
   "scripts": {},
   "author": "devx <devx@saucelabs.com>",
   "license": "MIT",
