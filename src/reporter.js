@@ -14,6 +14,7 @@ class MyReporter {
 
     this.projects = {};
     this.rootProject = undefined;
+    this.playwrightVersion = undefined;
 
     this.buildName = config?.buildName;
     this.tags = config?.tags || [];
@@ -28,6 +29,8 @@ class MyReporter {
       reporterVersion = packageData.version;
     // eslint-disable-next-line no-empty
     } catch (e) {}
+
+    this.playwrightVersion = config.version || 'unknown';
 
     this.api = new SauceLabs({
       user: process.env.SAUCE_USERNAME,
@@ -87,7 +90,8 @@ class MyReporter {
   async reportFile(project, file) {
 
     // Select project configuration and default to first available project.
-    const projectConfig = this.projects[project.title] || this.projects[Object.keys(this.projects)[0]];
+    // Playwright version >= 1.16.3 will contains the project config directly.
+    const projectConfig = project.project || this.projects[project.title] || this.projects[Object.keys(this.projects)[0]];
 
     const consoleLog = this.contructLogFile(project, file);
 
@@ -109,6 +113,7 @@ class MyReporter {
       success: passed,
       suiteName: suiteName,
       tags: this.tags || [],
+      playwrightVersion: this.playwrightVersion,
     });
     const sessionID = await this.createJob(jobBody);
     await this.uploadAssets(sessionID, consoleLog, assets.videos, assets.screenshots);
@@ -269,6 +274,7 @@ class MyReporter {
     build,
     browserName,
     browserVersion,
+    playwrightVersion,
   }) {
 
     return {
@@ -277,7 +283,7 @@ class MyReporter {
       startTime: startedAt,
       endTime: endedAt,
       framework: 'playwright',
-      frameworkVersion: '15.0',
+      frameworkVersion: playwrightVersion,
       status: 'complete',
       suite: suiteName,
       errors: [], // To Add
