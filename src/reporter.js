@@ -90,7 +90,7 @@ class MyReporter {
   async reportFile(project, file) {
 
     // Select project configuration and default to first available project.
-    // Playwright version >= 1.16.3 will contains the project config directly.
+    // Playwright version >= 1.16.3 will contain the project config directly.
     const projectConfig = project.project || this.projects[project.title] || this.projects[Object.keys(this.projects)[0]];
 
     const consoleLog = this.contructLogFile(project, file);
