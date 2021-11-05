@@ -11,6 +11,7 @@ const config: PlaywrightTestConfig = {
         'e2e'
       ],
     }],
+    ['line'],
   ],
   testDir: 'tests',
   use: {
