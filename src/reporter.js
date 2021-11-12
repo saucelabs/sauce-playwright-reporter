@@ -4,9 +4,9 @@
 const fs = require('fs');
 const { readFile } = require('fs/promises');
 const path = require('path');
-
 const SauceLabs = require('saucelabs').default;
 
+const { TestRun, Suite, Status } = require('@saucelabs/sauce-json-reporter');
 
 class MyReporter {
   constructor (config) {
@@ -56,12 +56,14 @@ class MyReporter {
   }
 
   async onEnd () {
-    for (const project of this.rootProject.suites) {
-      for (const file of project.suites) {
-        await this.reportFile(project, file);
-      }
-    }
-    this.displayReportedJobs(this.jobUrls);
+    const report = this.constructSauceReport()
+    // for (const project of this.rootProject.suites) {
+    //   for (const file of project.suites) {
+    //     await this.reportFile(project, file);
+    //   }
+    // }
+    // this.displayReportedJobs(this.jobUrls);
+    console.log(report.stringify());
   }
 
   displayReportedJobs (jobs) {
@@ -85,6 +87,40 @@ class MyReporter {
       );
     }
     return consoleLog;
+  }
+
+  constructSauceReport () {
+    const report = new TestRun();
+    for (const project of this.rootProject.suites) {
+      const suite = this.constructSauceSuite(project);
+
+      report.addSuite(suite);
+    }
+
+    return report;
+  }
+
+  constructSauceSuite (playwrightSuite) {
+    const suite = new Suite(playwrightSuite.title);
+
+    for (const testCase of playwrightSuite.tests) {
+      if (testCase.results.length > 1) {
+        console.log(testCase.results);
+      }
+      suite.withTest(
+        testCase.title,
+        testCase.ok() ? Status.Passed : Status.Failed,
+        testCase.endedAt - testCase.startedAt,
+      );
+    }
+
+    for (const subSuite of playwrightSuite.suites) {
+      const s = this.constructSauceSuite(subSuite);
+
+      suite.addSuite(s);
+    }
+
+    return suite;
   }
 
   async reportFile(project, file) {
