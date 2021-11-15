@@ -4,9 +4,9 @@
 const fs = require('fs');
 const { readFile } = require('fs/promises');
 const path = require('path');
+
 const SauceLabs = require('saucelabs').default;
 
-const { TestRun, Suite, Status } = require('@saucelabs/sauce-json-reporter');
 
 class MyReporter {
   constructor (config) {
@@ -62,7 +62,6 @@ class MyReporter {
       }
     }
     this.displayReportedJobs(this.jobUrls);
-
   }
 
   displayReportedJobs (jobs) {
@@ -88,70 +87,6 @@ class MyReporter {
     return consoleLog;
   }
 
-  constructSauceReport () {
-    const report = new TestRun();
-    for (const project of this.rootProject.suites) {
-      const suite = this.constructSauceSuite(project);
-
-      report.addSuite(suite);
-    }
-
-    return report;
-  }
-
-  constructSauceSuite (playwrightSuite) {
-    const suite = new Suite(playwrightSuite.title);
-
-    for (const testCase of playwrightSuite.tests) {
-      const test = suite.withTest(
-        testCase.title,
-        testCase.ok() ? Status.Passed : Status.Failed,
-        testCase.results.map((r) => r.duration).reduce((prev, curr) => { return prev + curr }, 0),
-      );
-
-      // Add test case metadata
-      // {
-      //    "results": [
-      //      {
-      //        status,
-      //        error,
-      //        sourceSnippet,  Need to compute it
-      //        retry,
-      //        attachments,
-      //      },
-      //    ],
-      if (testCase.results?.length > 0) {
-        const result = testCase.results[0];
-        // TODO: Handle multiple results (i.e. when a test was retried)
-        for (const attachment of result.attachments) {
-          if (attachment.path) {
-            test.attach({
-              name: attachment.name,
-              path: attachment.path,
-              contentType: attachment.contentType,
-            });
-          }
-        }
-        test.metadata = {
-          runs: testCase.results?.length || 0,
-        };
-      }
-    }
-
-    // TODO: Add report metadata
-    // 1. framework: playwright
-    // 2. reporterVersion: thisVersion,
-    // 3. frameworkVersion
-
-    for (const subSuite of playwrightSuite.suites) {
-      const s = this.constructSauceSuite(subSuite);
-
-      suite.addSuite(s);
-    }
-
-    return suite;
-  }
-
   async reportFile(project, file) {
 
     // Select project configuration and default to first available project.
@@ -159,11 +94,6 @@ class MyReporter {
     const projectConfig = project.project || this.projects[project.title] || this.projects[Object.keys(this.projects)[0]];
 
     const consoleLog = this.contructLogFile(project, file);
-
-    const sauceReport = new TestRun();
-    sauceReport.addSuite(this.constructSauceSuite(file));
-
-    // console.log(sauceReport.stringify());
 
     // Screenshot / Video management
     const assets = this.getVideosAndScreenshots(file);
@@ -186,7 +116,7 @@ class MyReporter {
       playwrightVersion: this.playwrightVersion,
     });
     const sessionID = await this.createJob(jobBody);
-    await this.uploadAssets(sessionID, consoleLog, sauceReport, assets.videos, assets.screenshots);
+    await this.uploadAssets(sessionID, consoleLog, assets.videos, assets.screenshots);
 
     this.jobUrls.push({
       url: this.getJobUrl(sessionID, this.region, this.tld),
@@ -291,19 +221,13 @@ class MyReporter {
     return assets;
   }
 
-  async uploadAssets (sessionId, consoleLog, sauceReport, videosPath = [], screenshots = []) {
+  async uploadAssets (sessionId, consoleLog, videosPath = [], screenshots = []) {
     const assets = [];
 
     assets.push({
       filename: 'console.log',
       data: consoleLog
     });
-
-    assets.push({
-      filename: 'sauce-test-report.json',
-      data: Buffer.from(sauceReport.stringify()),
-    });
-
     if (videosPath.length > 1) {
       assets.push(...videosPath);
       try {
