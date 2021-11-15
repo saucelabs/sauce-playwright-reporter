@@ -6,7 +6,7 @@ const { readFile } = require('fs/promises');
 const path = require('path');
 const SauceLabs = require('saucelabs').default;
 
-const { TestRun, Suite, Status } = require('@saucelabs/sauce-json-reporter');
+const { TestRun, Suite, Status, Attachment } = require('@saucelabs/sauce-json-reporter');
 
 class MyReporter {
   constructor (config) {
@@ -104,15 +104,45 @@ class MyReporter {
     const suite = new Suite(playwrightSuite.title);
 
     for (const testCase of playwrightSuite.tests) {
-      if (testCase.results.length > 1) {
-        console.log(testCase.results);
-      }
-      suite.withTest(
+      const test = suite.withTest(
         testCase.title,
         testCase.ok() ? Status.Passed : Status.Failed,
-        testCase.endedAt - testCase.startedAt,
+        testCase.results.map((r) => r.duration).reduce((prev, curr) => { return prev + curr }, 0),
       );
+
+      // Add test case metadata
+      // {
+      //    "results": [
+      //      {
+      //        status,
+      //        error,
+      //        sourceSnippet,  Need to compute it
+      //        retry,
+      //        attachments,
+      //      },
+      //    ],
+      if (testCase.results?.length > 0) {
+        const result = testCase.results[0];
+        // TODO: Handle multiple results (i.e. when a test was retried)
+        for (const attachment of result.attachments) {
+          if (attachment.path) {
+            test.attach({
+              name: attachment.name,
+              path: attachment.path,
+              contentType: attachment.contentType,
+            });
+          }
+        }
+        test.metadata = {
+          runs: testCase.results?.length || 0,
+        };
+      }
     }
+
+    // TODO: Add report metadata
+    // 1. framework: playwright
+    // 2. reporterVersion: thisVersion,
+    // 3. frameworkVersion
 
     for (const subSuite of playwrightSuite.suites) {
       const s = this.constructSauceSuite(subSuite);
