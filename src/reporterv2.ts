@@ -19,6 +19,21 @@ type Config = {
   tld?: string;
 };
 
+type ReportsRequestBody = {
+  name?: string;
+  browserName?: string;
+  browserVersion?: string;
+  platformName?: string;
+  framework?: string;
+  frameworkVersion?: string;
+  passed?: boolean;
+  startTime?: string;
+  endTime?: string;
+  build?: string;
+  tags?: string[];
+  suite?: string;
+};
+
 export default class SauceReporter implements Reporter {
   jobUrls: JobUrl[];
   projects: { [k: string] : any };
@@ -32,8 +47,8 @@ export default class SauceReporter implements Reporter {
 
   rootSuite?: PlaywrightSuite;
 
-  playwrightVersion?: string;
-  reporterVersion?: string;
+  playwrightVersion: string;
+  reporterVersion: string;
 
   startedAt?: Date;
   endedAt?: Date;
@@ -47,6 +62,9 @@ export default class SauceReporter implements Reporter {
     this.region = reporterConfig?.region || 'us-west-1';
     this.tld = this.region === 'staging' ? 'net' : 'com';
 
+    this.playwrightVersion = 'unknown';
+    this.reporterVersion = 'unknown'
+
     // TODO: Handle case where creds are not given
   }
 
@@ -59,7 +77,9 @@ export default class SauceReporter implements Reporter {
     // eslint-disable-next-line no-empty
     } catch (e) {}
 
-    this.playwrightVersion = config.version || 'unknown';
+    if (config.version) {
+      this.playwrightVersion = config.version;
+    }
 
     this.api = new SauceLabs({
       user: process.env.SAUCE_USERNAME,
@@ -67,7 +87,7 @@ export default class SauceReporter implements Reporter {
       region: this.region,
       tld: this.tld,
       headers: {
-        'User-Agent': `playwright-reporter/${this.reporterVersion || 'unknown'}`
+        'User-Agent': `playwright-reporter/${this.reporterVersion}`
       },
     });
 
@@ -213,15 +233,19 @@ export default class SauceReporter implements Reporter {
     const passed = sauceReport.computeStatus() === Status.Passed;
 
     const suiteName = projectSuite.title ? `${projectSuite.title} - ${fileSuite.title}` : `${fileSuite.title}`;
+
+    // Currently no reliable way to get the browser version
+    const browserVersion = '1.0';
+
     const jobBody = this.createBody({
       // TODO: Can we get browser name if no projects are defined?
       browserName: projectConfig?.use?.browserName || 'chromium',
-      browserVersion: '1.0',
+      browserVersion,
       build: this.buildName,
       startedAt: startedAt?.toISOString(),
       endedAt: endedAt?.toISOString(),
       success: passed,
-      suiteName: suiteName,
+      suiteName,
       tags: this.tags,
       playwrightVersion: this.playwrightVersion,
     });
@@ -346,7 +370,6 @@ export default class SauceReporter implements Reporter {
     await Promise.all([
       this.api?.uploadJobAssets(sessionId, { files: assets }).then(
         (resp) => {
-          // console.log(resp);
           if (resp.errors) {
             for (let err of resp.errors) {
               console.error(err);
@@ -368,33 +391,30 @@ export default class SauceReporter implements Reporter {
     }
   }
 
-  createBody ({
-    suiteName,
-    startedAt,
-    endedAt,
-    success,
-    tags,
-    build,
-    browserName,
-    browserVersion,
-    playwrightVersion,
-  }) {
+  createBody (args: {
+    suiteName: string,
+    startedAt: string,
+    endedAt: string,
+    success: boolean,
+    tags: string[],
+    build: string,
+    browserName: string,
+    browserVersion: string,
+    playwrightVersion: string,
+  }) : ReportsRequestBody {
 
     return {
-      name: suiteName,
-      user: process.env.SAUCE_USERNAME,
-      startTime: startedAt,
-      endTime: endedAt,
+      name: args.suiteName,
+      startTime: args.startedAt,
+      endTime: args.endedAt,
       framework: 'playwright',
-      frameworkVersion: playwrightVersion,
-      status: 'complete',
-      suite: suiteName,
-      errors: [], // To Add
-      passed: success,
-      tags: tags,
-      build: build,
-      browserName,
-      browserVersion,
+      frameworkVersion: args.playwrightVersion,
+      suite: args.suiteName,
+      passed: args.success,
+      tags: args.tags,
+      build: args.build,
+      browserName: args.browserName,
+      browserVersion: args.browserVersion,
       platformName: this.getOsName(),
     };
   }
@@ -408,11 +428,11 @@ export default class SauceReporter implements Reporter {
       case 'linux':
         return 'linux';
       default:
-        'unknown';
+        return 'unknown';
     }
   }
 
-  getJobUrl (sessionId, region, tld) {
+  getJobUrl (sessionId: string, region: SauceRegion, tld: string) {
     if (region === 'us-west-1') {
       return `https://app.saucelabs.com/tests/${sessionId}`
     }
