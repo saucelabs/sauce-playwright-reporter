@@ -6,7 +6,7 @@ const { readFile } = require('fs/promises');
 const path = require('path');
 const SauceLabs = require('saucelabs').default;
 
-const { TestRun, Suite, Status, Attachment } = require('@saucelabs/sauce-json-reporter');
+const { TestRun, Suite, Status } = require('@saucelabs/sauce-json-reporter');
 
 class MyReporter {
   constructor (config) {
@@ -56,14 +56,13 @@ class MyReporter {
   }
 
   async onEnd () {
-    const report = this.constructSauceReport()
-    // for (const project of this.rootProject.suites) {
-    //   for (const file of project.suites) {
-    //     await this.reportFile(project, file);
-    //   }
-    // }
-    // this.displayReportedJobs(this.jobUrls);
-    console.log(report.stringify());
+    for (const project of this.rootProject.suites) {
+      for (const file of project.suites) {
+        await this.reportFile(project, file);
+      }
+    }
+    this.displayReportedJobs(this.jobUrls);
+
   }
 
   displayReportedJobs (jobs) {
@@ -161,6 +160,11 @@ class MyReporter {
 
     const consoleLog = this.contructLogFile(project, file);
 
+    const sauceReport = new TestRun();
+    sauceReport.addSuite(this.constructSauceSuite(file));
+
+    // console.log(sauceReport.stringify());
+
     // Screenshot / Video management
     const assets = this.getVideosAndScreenshots(file);
 
@@ -182,7 +186,7 @@ class MyReporter {
       playwrightVersion: this.playwrightVersion,
     });
     const sessionID = await this.createJob(jobBody);
-    await this.uploadAssets(sessionID, consoleLog, assets.videos, assets.screenshots);
+    await this.uploadAssets(sessionID, consoleLog, sauceReport, assets.videos, assets.screenshots);
 
     this.jobUrls.push({
       url: this.getJobUrl(sessionID, this.region, this.tld),
@@ -287,13 +291,19 @@ class MyReporter {
     return assets;
   }
 
-  async uploadAssets (sessionId, consoleLog, videosPath = [], screenshots = []) {
+  async uploadAssets (sessionId, consoleLog, sauceReport, videosPath = [], screenshots = []) {
     const assets = [];
 
     assets.push({
       filename: 'console.log',
       data: consoleLog
     });
+
+    assets.push({
+      filename: 'sauce-test-report.json',
+      data: Buffer.from(sauceReport.stringify()),
+    });
+
     if (videosPath.length > 1) {
       assets.push(...videosPath);
       try {
