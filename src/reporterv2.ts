@@ -5,7 +5,7 @@ import SauceLabs from 'saucelabs';
 import { TestRun, Suite as SauceSuite, Status } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase } from '@playwright/test/reporter';
 
-type SauceRegion = 'us' | 'eu' | 'apac' | 'us-west-1' | 'us-east-1' | 'eu-central-1' | 'apac-southeast-1' | 'staging';
+type SauceRegion = 'us-west-1' | 'eu-central-1' | 'staging';
 
 type JobUrl = {
   name: string;
@@ -41,14 +41,12 @@ export default class SauceReporter implements Reporter {
   buildName: string;
   tags: string[];
   region: SauceRegion;
-  tld: string;
 
-  api?: SauceLabs;
+  api: SauceLabs;
 
   rootSuite?: PlaywrightSuite;
 
-  playwrightVersion: string;
-  reporterVersion: string;
+  playwrightVersion?: string;
 
   startedAt?: Date;
   endedAt?: Date;
@@ -60,36 +58,31 @@ export default class SauceReporter implements Reporter {
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
     this.region = reporterConfig?.region || 'us-west-1';
-    this.tld = this.region === 'staging' ? 'net' : 'com';
 
-    this.playwrightVersion = 'unknown';
-    this.reporterVersion = 'unknown'
-
-    // TODO: Handle case where creds are not given
-  }
-
-  onBegin (config: FullConfig, suite: PlaywrightSuite) {
-    this.startedAt = new Date();
-
+    let reporterVersion = 'unknown';
     try {
       const packageData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
-      this.reporterVersion = packageData.version;
+      reporterVersion = packageData.version;
     // eslint-disable-next-line no-empty
     } catch (e) {}
-
-    if (config.version) {
-      this.playwrightVersion = config.version;
-    }
 
     this.api = new SauceLabs({
       user: process.env.SAUCE_USERNAME,
       key: process.env.SAUCE_ACCESS_KEY,
       region: this.region,
-      tld: this.tld,
+      tld: this.region === 'staging' ? 'net' : 'com',
       headers: {
-        'User-Agent': `playwright-reporter/${this.reporterVersion}`
+        'User-Agent': `playwright-reporter/${reporterVersion}`
       },
     });
+  }
+
+  onBegin (config: FullConfig, suite: PlaywrightSuite) {
+    this.startedAt = new Date();
+
+    if (config.version) {
+      this.playwrightVersion = config.version;
+    }
 
     this.rootSuite = suite;
 
@@ -112,7 +105,6 @@ export default class SauceReporter implements Reporter {
     }
 
     this.endedAt = new Date();
-
     for (const projectSuite of this.rootSuite.suites) {
       for (const fileSuite of projectSuite.suites) {
         await this.reportFile(projectSuite, fileSuite);
@@ -159,49 +151,25 @@ export default class SauceReporter implements Reporter {
     const suite = new SauceSuite(rootSuite.title);
 
     for (const testCase of rootSuite.tests) {
+      const lastResult = testCase.results[testCase.results.length - 1];
+
       const test = suite.withTest(
         testCase.title,
         testCase.ok() ? Status.Passed : Status.Failed,
-        testCase.results.map((r) => r.duration).reduce((prev, curr) => { return prev + curr }, 0),
+        lastResult.duration,
       );
 
-      // Add test case metadata
-      // {
-      //    "results": [
-      //      {
-      //        status,
-      //        error,
-      //        sourceSnippet,  Need to compute it
-      //        retry,
-      //        attachments,
-      //      },
-      //    ],
-      if (testCase.results?.length > 0) {
-        const result = testCase.results[0];
-        // TODO: Handle multiple results (i.e. when a test was retried)
-        for (const attachment of result.attachments) {
-          if (attachment.path) {
-            test.attach({
-              name: attachment.name,
-              path: attachment.path,
-              contentType: attachment.contentType,
-            });
-          }
-        }
-
-        test.startTime = result.startTime;
-
-        // TODO: Need parity with junit
-        test.metadata = {
-          runs: testCase.results?.length || 0,
-        };
+      for (const attachment of lastResult.attachments) {
+        const name = attachment.path ? path.basename(attachment.path) : attachment.name;
+        test.attach({
+          name,
+          path: attachment.path || '',
+          contentType: attachment.contentType,
+        });
       }
-    }
 
-    // TODO: Add report metadata
-    // 1. framework: playwright
-    // 2. reporterVersion: thisVersion,
-    // 3. frameworkVersion
+      test.startTime = lastResult.startTime;
+    }
 
     for (const subSuite of rootSuite.suites) {
       const s = this.constructSauceSuite(subSuite);
@@ -253,7 +221,7 @@ export default class SauceReporter implements Reporter {
     await this.uploadAssets(sessionID, consoleLog, sauceReport, assets.videos, assets.screenshots);
 
     this.jobUrls.push({
-      url: this.getJobUrl(sessionID, this.region, this.tld),
+      url: this.getJobUrl(sessionID, this.region),
       name: suiteName,
     });
   }
@@ -432,7 +400,9 @@ export default class SauceReporter implements Reporter {
     }
   }
 
-  getJobUrl (sessionId: string, region: SauceRegion, tld: string) {
+  getJobUrl (sessionId: string, region: SauceRegion) {
+    const tld = region === 'staging' ? 'net' : 'com';
+
     if (region === 'us-west-1') {
       return `https://app.saucelabs.com/tests/${sessionId}`
     }
