@@ -1,8 +1,9 @@
 import fs from 'fs';
 import { readFile } from 'fs/promises';
 import * as path from 'path';
+import { randomBytes } from 'crypto';
 import SauceLabs from 'saucelabs';
-import { TestRun, Suite as SauceSuite, Status } from '@saucelabs/sauce-json-reporter';
+import { TestRun, Suite as SauceSuite, Status, Attachment } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase } from '@playwright/test/reporter';
 
 type SauceRegion = 'us-west-1' | 'eu-central-1' | 'staging';
@@ -46,7 +47,7 @@ export default class SauceReporter implements Reporter {
 
   rootSuite?: PlaywrightSuite;
 
-  playwrightVersion?: string;
+  playwrightVersion: string;
 
   startedAt?: Date;
   endedAt?: Date;
@@ -75,6 +76,8 @@ export default class SauceReporter implements Reporter {
         'User-Agent': `playwright-reporter/${reporterVersion}`
       },
     });
+
+    this.playwrightVersion = 'unknown';
   }
 
   onBegin (config: FullConfig, suite: PlaywrightSuite) {
@@ -91,60 +94,54 @@ export default class SauceReporter implements Reporter {
     }
   }
 
-  onTestBegin (test: TestCase) {
-    test.startedAt = new Date();
-  }
-
-  onTestEnd (test: TestCase) {
-    test.endedAt = new Date();
-  }
-
   async onEnd () {
     if (!this.rootSuite) {
       return;
     }
 
     this.endedAt = new Date();
+
+    const jobUrls = [];
     for (const projectSuite of this.rootSuite.suites) {
-      for (const fileSuite of projectSuite.suites) {
-        await this.reportFile(projectSuite, fileSuite);
-      }
+      const id = await this.reportProject(projectSuite);
+      jobUrls.push({
+        url: this.getJobUrl(id, this.region),
+        name: projectSuite.title,
+      });
     }
-    this.displayReportedJobs(this.jobUrls);
+
+    this.displayReportedJobs(jobUrls);
   }
 
   displayReportedJobs (jobs: JobUrl[]) {
     console.log(`\nReported jobs to Sauce Labs:`);
     for (const job of jobs) {
-      console.log(`  - ${job.url}`);
+      console.log(`  - ${job.name}: ${job.url}`);
     }
+
+    // NOTE: This empty console.log() is required for the output
+    // to work with the line reporter. The line reporter makes liberal
+    // use of the backspace ansi escape code. The empty console.log here
+    // is a buffer between our output and a possible backspace escape.
     console.log();
   }
 
-  constructLogFile (projectSuite: PlaywrightSuite, fileSuite: PlaywrightSuite) {
-    let consoleLog = `Project: ${projectSuite.title}\nFile: ${fileSuite.title}\n\n`;
-
-    consoleLog = consoleLog.concat(
-      this.formatTestCasesResults(fileSuite.tests, '')
-    );
-
-    for (const suite of fileSuite.suites) {
+  constructLogFile (projectSuite: PlaywrightSuite) {
+    let consoleLog = `Project: ${projectSuite.title}\n`;
+    for (const fileSuite of projectSuite.suites) {
+      consoleLog = `${consoleLog}\nFile: ${fileSuite.title}\n\n`;
       consoleLog = consoleLog.concat(
-        this.formatSuiteResult(suite)
+        this.formatTestCasesResults(fileSuite.tests, '')
       );
+
+      for (const suite of fileSuite.suites) {
+        consoleLog = consoleLog.concat(
+          this.formatSuiteResult(suite)
+        );
+      }
     }
+
     return consoleLog;
-  }
-
-  constructSauceReport (rootSuite: PlaywrightSuite) {
-    const report = new TestRun();
-    for (const project of rootSuite.suites) {
-      const suite = this.constructSauceSuite(project);
-
-      report.addSuite(suite);
-    }
-
-    return report;
   }
 
   constructSauceSuite (rootSuite: PlaywrightSuite) {
@@ -161,8 +158,9 @@ export default class SauceReporter implements Reporter {
 
       for (const attachment of lastResult.attachments) {
         const name = attachment.path ? path.basename(attachment.path) : attachment.name;
+        const prefix = randomBytes(16).toString('hex');
         test.attach({
-          name,
+          name: `${prefix}-${name}`,
           path: attachment.path || '',
           contentType: attachment.contentType,
         });
@@ -180,27 +178,22 @@ export default class SauceReporter implements Reporter {
     return suite;
   }
 
-  async reportFile(projectSuite: PlaywrightSuite, fileSuite: PlaywrightSuite) {
+  async reportProject(projectSuite: PlaywrightSuite) {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
     const projectConfig = projectSuite.project ||
       this.projects[projectSuite.title] ||
       this.projects[Object.keys(this.projects)[0]];
 
-    const consoleLog = this.constructLogFile(projectSuite, fileSuite);
+    const consoleLog = this.constructLogFile(projectSuite);
+
+    const sauceSuite = this.constructSauceSuite(projectSuite)
+    const attachments = this.findAttachments(sauceSuite);
 
     const sauceReport = new TestRun();
-    sauceReport.addSuite(this.constructSauceSuite(fileSuite));
+    sauceReport.addSuite(sauceSuite);
 
-    // Screenshot / Video management
-    const assets = this.getVideosAndScreenshots(fileSuite);
-
-    // Global info
-    const startedAt = this.findFirstStartedAt(fileSuite) || new Date();
-    const endedAt = this.findLastEndedAt(fileSuite) || new Date();
-    const passed = sauceReport.computeStatus() === Status.Passed;
-
-    const suiteName = projectSuite.title ? `${projectSuite.title} - ${fileSuite.title}` : `${fileSuite.title}`;
+    const didSuitePass = sauceReport.computeStatus() === Status.Passed;
 
     // Currently no reliable way to get the browser version
     const browserVersion = '1.0';
@@ -210,52 +203,18 @@ export default class SauceReporter implements Reporter {
       browserName: projectConfig?.use?.browserName || 'chromium',
       browserVersion,
       build: this.buildName,
-      startedAt: startedAt?.toISOString(),
-      endedAt: endedAt?.toISOString(),
-      success: passed,
-      suiteName,
+      startedAt: this.startedAt.toISOString(),
+      endedAt: this.endedAt.toISOString(),
+      success: didSuitePass,
+      suiteName: projectSuite.title,
       tags: this.tags,
       playwrightVersion: this.playwrightVersion,
     });
+
     const sessionID = await this.createJob(jobBody);
-    await this.uploadAssets(sessionID, consoleLog, sauceReport, assets.videos, assets.screenshots);
+    await this.uploadAssets(sessionID, consoleLog, sauceReport, attachments);
 
-    this.jobUrls.push({
-      url: this.getJobUrl(sessionID, this.region),
-      name: suiteName,
-    });
-  }
-
-  findFirstStartedAt (suite: PlaywrightSuite): Date {
-    let minDate;
-    for (const test of suite.tests) {
-      if (!minDate || test.startedAt < minDate) {
-        minDate = test.startedAt;
-      }
-    }
-    for (const subSuite of suite.suites) {
-      const subMinDate = this.findFirstStartedAt(subSuite);
-      if (!minDate || subMinDate < minDate) {
-        minDate = subMinDate;
-      }
-    }
-    return minDate;
-  }
-
-  findLastEndedAt (suite: PlaywrightSuite): Date{
-    let maxDate;
-    for (const test of suite.tests) {
-      if (!maxDate || test.startedAt < maxDate) {
-        maxDate = test.startedAt;
-      }
-    }
-    for (const subSuite of suite.suites) {
-      const subMaxDate = this.findLastEndedAt(subSuite);
-      if (!maxDate || maxDate < subMaxDate) {
-        maxDate = subMaxDate;
-      }
-    }
-    return maxDate;
+    return sessionID;
   }
 
   formatSuiteResult(suite: PlaywrightSuite, level = 0) {
@@ -284,31 +243,27 @@ export default class SauceReporter implements Reporter {
     return consoleLog;
   }
 
-  getVideosAndScreenshots(suite: PlaywrightSuite) {
-    const assets = { videos: [], screenshots: [] };
+  findAttachments(suite: SauceSuite) : Attachment[] {
+    const attachments = [];
+    for (const test of suite.tests) {
+      if (!test.attachments) {
+        break;
+      }
 
-    for (const testCase of suite.tests) {
-      for (const result of testCase.results) {
-        for (const attachment of result.attachments) {
-          if (attachment.name === 'video') {
-            assets.videos.push(attachment.path);
-          } else {
-            assets.screenshots.push(attachment.path);
-          }
-        }
+      for (const attachment of test.attachments) {
+        attachments.push(attachment);
       }
     }
-
     for (const subSuite of suite.suites) {
-      const { videos: subVideos, screenshots: subScreenshots } = this.getVideosAndScreenshots(subSuite);
-      assets.videos.push(...subVideos);
-      assets.screenshots.push(...subScreenshots);
+      const suiteAttachments = this.findAttachments(subSuite);
+
+      attachments.push(...suiteAttachments);
     }
 
-    return assets;
+    return attachments;
   }
 
-  async uploadAssets (sessionId: string, consoleLog: string, sauceReport: TestRun, videosPath = [], screenshots = []) {
+  async uploadAssets (sessionId: string, consoleLog: string, sauceReport: TestRun, attachments: Attachment[]) {
     const assets = [];
 
     assets.push({
@@ -321,19 +276,21 @@ export default class SauceReporter implements Reporter {
       data: Buffer.from(sauceReport.stringify()),
     });
 
-    if (videosPath.length > 1) {
-      assets.push(...videosPath);
+    for (const attachment of attachments) {
+      if (attachment.path === '') {
+        break;
+      }
+
       try {
-        const videoData = await readFile(videosPath[0]);
+        const data = await readFile(attachment.path);
         assets.push({
-          filename: 'video.webm',
-          data: videoData,
+          filename: attachment.name,
+          data,
         });
       } catch (e) {
-        console.log(`@saucelabs/cypress-plugin: unable to report video file ${videosPath[0]}: ${e}`);
+        console.log(`@saucelabs/sauce-playwright-reporter: unable to report video file ${attachment.path}: ${e}`);
       }
     }
-    assets.push(...screenshots);
 
     await Promise.all([
       this.api?.uploadJobAssets(sessionId, { files: assets }).then(
