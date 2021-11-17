@@ -14,15 +14,26 @@ const config: PlaywrightTestConfig = {
     ['line'],
   ],
   testDir: 'tests',
-  use: {
-    video: 'on',
-  },
   projects: [{
-    name: 'Chromium Suite',
+    name: 'Passing Suites',
     use: {
       browserName: 'chromium',
+
     },
-  }],
+    testMatch: "tests/nesting.example.test.js",
+  },
+  {
+    name: "Project with assets",
+    testMatch: 'tests/simple.test.js',
+    use: {
+      video: 'on',
+    },
+  },
+  {
+    name: 'Failing Suites',
+    testMatch: 'tests/failing.test.js',
+  }
+  ],
 };
 
 module.exports = config;
