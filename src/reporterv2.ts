@@ -5,7 +5,7 @@ import { randomBytes } from 'crypto';
 import os from 'os';
 import SauceLabs from 'saucelabs';
 import { TestRun, Suite as SauceSuite, Status, Attachment } from '@saucelabs/sauce-json-reporter';
-import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase } from '@playwright/test/reporter';
+import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
 type SauceRegion = 'us-west-1' | 'eu-central-1' | 'staging';
 
@@ -182,6 +182,8 @@ export default class SauceReporter implements Reporter {
         testCase.title,
         isSkipped ? Status.Skipped : (testCase.ok() ? Status.Passed : Status.Failed),
         lastResult.duration,
+        lastResult.error ? this.errorToMessage(lastResult.error) : undefined,
+        lastResult.startTime,
       );
 
       for (const attachment of lastResult.attachments) {
@@ -193,8 +195,6 @@ export default class SauceReporter implements Reporter {
           contentType: attachment.contentType,
         });
       }
-
-      test.startTime = lastResult.startTime;
     }
 
     for (const subSuite of rootSuite.suites) {
@@ -203,6 +203,13 @@ export default class SauceReporter implements Reporter {
     }
 
     return suite;
+  }
+
+  errorToMessage(err: TestError) {
+    return `${err.message}:  ${err.value}
+
+${err.stack}
+    `;
   }
 
   async reportProject(projectSuite: PlaywrightSuite) {
