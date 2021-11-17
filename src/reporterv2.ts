@@ -2,6 +2,7 @@ import fs from 'fs';
 import { readFile } from 'fs/promises';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
+import os from 'os';
 import SauceLabs from 'saucelabs';
 import { TestRun, Suite as SauceSuite, Status, Attachment } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase } from '@playwright/test/reporter';
@@ -28,8 +29,8 @@ type ReportsRequestBody = {
   framework?: string;
   frameworkVersion?: string;
   passed?: boolean;
-  startTime?: string;
-  endTime?: string;
+  startTime: string;
+  endTime: string;
   build?: string;
   tags?: string[];
   suite?: string;
@@ -68,8 +69,8 @@ export default class SauceReporter implements Reporter {
     } catch (e) {}
 
     this.api = new SauceLabs({
-      user: process.env.SAUCE_USERNAME,
-      key: process.env.SAUCE_ACCESS_KEY,
+      user: process.env.SAUCE_USERNAME || '',
+      key: process.env.SAUCE_ACCESS_KEY || '',
       region: this.region,
       tld: this.region === 'staging' ? 'net' : 'com',
       headers: {
@@ -136,11 +137,37 @@ export default class SauceReporter implements Reporter {
 
       for (const suite of fileSuite.suites) {
         consoleLog = consoleLog.concat(
-          this.formatSuiteResult(suite)
+          this.formatSuiteResults(suite)
         );
       }
     }
 
+    return consoleLog;
+  }
+
+  formatSuiteResults (suite: PlaywrightSuite, level = 0) {
+    const padding = '  '.repeat(level);
+
+    let consoleLog = `\n${padding}${suite.title}:\n`
+
+    consoleLog = consoleLog.concat(
+      this.formatTestCasesResults(suite.tests, padding)
+    );
+
+    for (const subSuite of suite.suites) {
+      consoleLog = consoleLog.concat(
+        this.formatSuiteResults(subSuite, level+1)
+      );
+    }
+    return consoleLog;
+  }
+
+  formatTestCasesResults(testCases: TestCase[], padding: string) {
+    let consoleLog = '';
+    for (const testCase of testCases) {
+      const ico = testCase.results.map(x => x.status).filter(x => x == 'passed' ).length > 0 ? '✓' : '✗';
+      consoleLog = consoleLog.concat(`${padding}${ico} ${testCase.title}\n`);
+    }
     return consoleLog;
   }
 
@@ -171,7 +198,6 @@ export default class SauceReporter implements Reporter {
 
     for (const subSuite of rootSuite.suites) {
       const s = this.constructSauceSuite(subSuite);
-
       suite.addSuite(s);
     }
 
@@ -199,12 +225,11 @@ export default class SauceReporter implements Reporter {
     const browserVersion = '1.0';
 
     const jobBody = this.createBody({
-      // TODO: Can we get browser name if no projects are defined?
       browserName: projectConfig?.use?.browserName || 'chromium',
       browserVersion,
       build: this.buildName,
-      startedAt: this.startedAt.toISOString(),
-      endedAt: this.endedAt.toISOString(),
+      startedAt: this.startedAt ? this.startedAt.toISOString() : new Date().toISOString(),
+      endedAt: this.endedAt ? this.endedAt.toISOString() : new Date().toISOString(),
       success: didSuitePass,
       suiteName: projectSuite.title,
       tags: this.tags,
@@ -215,32 +240,6 @@ export default class SauceReporter implements Reporter {
     await this.uploadAssets(sessionID, consoleLog, sauceReport, attachments);
 
     return sessionID;
-  }
-
-  formatSuiteResult(suite: PlaywrightSuite, level = 0) {
-    const padding = '  '.repeat(level);
-
-    let consoleLog = `\n${padding}${suite.title}:\n`
-
-    consoleLog = consoleLog.concat(
-      this.formatTestCasesResults(suite.tests, padding)
-    );
-
-    for (const subSuite of suite.suites) {
-      consoleLog = consoleLog.concat(
-        this.formatSuiteResult(subSuite, level+1)
-      );
-    }
-    return consoleLog;
-  }
-
-  formatTestCasesResults(testCases: TestCase[], padding: string) {
-    let consoleLog = '';
-    for (const testCase of testCases) {
-      const ico = testCase.results.map(x => x.status).filter(x => x == 'passed' ).length > 0 ? '✓' : '✗';
-      consoleLog = consoleLog.concat(`${padding}${ico} ${testCase.title}\n`);
-    }
-    return consoleLog;
   }
 
   findAttachments(suite: SauceSuite) : Attachment[] {
@@ -340,16 +339,16 @@ export default class SauceReporter implements Reporter {
       build: args.build,
       browserName: args.browserName,
       browserVersion: args.browserVersion,
-      platformName: this.getOsName(),
+      platformName: this.getPlatformName(),
     };
   }
 
-  getOsName () {
-    switch (process.platform) {
+  getPlatformName () {
+    switch (os.platform()) {
       case 'darwin':
-        return 'mac';
+        return `Mac ${os.release()}`;
       case 'win32':
-        return 'windows';
+        return `windows ${os.release()}`;
       case 'linux':
         return 'linux';
       default:
