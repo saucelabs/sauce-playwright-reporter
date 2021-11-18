@@ -301,7 +301,7 @@ ${err.stack}
           data,
         });
       } catch (e) {
-        console.log(`@saucelabs/sauce-playwright-reporter: unable to report video file ${attachment.path}: ${e}`);
+        console.log(`@saucelabs/playwright-reporter: unable to report video file ${attachment.path}: ${e}`);
       }
     }
 
