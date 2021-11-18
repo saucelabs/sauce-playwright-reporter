@@ -122,8 +122,8 @@ export default class SauceReporter implements Reporter {
 
     // NOTE: This empty console.log() is required for the output
     // to work with the line reporter. The line reporter makes liberal
-    // use of the backspace ansi escape code. The empty console.log here
-    // is a buffer between our output and a possible backspace escape.
+    // use of the erase line ansi escape code. The empty console.log here
+    // is a buffer between our output and a possible erase escape.
     console.log();
   }
 
