@@ -176,6 +176,9 @@ export default class SauceReporter implements Reporter {
 
     for (const testCase of rootSuite.tests) {
       const lastResult = testCase.results[testCase.results.length - 1];
+      if (!lastResult) {
+        break;
+      }
 
       const isSkipped = testCase.outcome() === 'skipped';
       const test = suite.withTest(
