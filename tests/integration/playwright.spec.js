@@ -48,7 +48,7 @@ describe('runs tests on cloud', function () {
     expect(jobs.length).toBe(1);
   });
 
-  test('job has video.webm/console.log attached', async function () {
+  test('job has video/console.log attached', async function () {
     let jobId = output.match(jobUrlPattern)[0];
     jobId = jobId.slice(jobId.lastIndexOf('/')+1);
 
