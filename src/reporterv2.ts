@@ -176,6 +176,9 @@ export default class SauceReporter implements Reporter {
 
     for (const testCase of rootSuite.tests) {
       const lastResult = testCase.results[testCase.results.length - 1];
+
+      // TestCase can have 0 results if it was skipped with the skip annotation or
+      // if it was filtered with the grep cli flag
       if (!lastResult) {
         break;
       }
