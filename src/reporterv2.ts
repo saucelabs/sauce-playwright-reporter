@@ -165,8 +165,8 @@ export default class SauceReporter implements Reporter {
   formatTestCasesResults(testCases: TestCase[], padding: string) {
     let consoleLog = '';
     for (const testCase of testCases) {
-      const ico = testCase.results.map(x => x.status).filter(x => x == 'passed' ).length > 0 ? '✓' : '✗';
-      consoleLog = consoleLog.concat(`${padding}${ico} ${testCase.title}\n`);
+      const icon = testCase.results.filter((r) => r.status === 'passed').length > 0 ? '✓' : '✗';
+      consoleLog = consoleLog.concat(`${padding}${icon} ${testCase.title}\n`);
     }
     return consoleLog;
   }
