@@ -10,6 +10,7 @@ const config: PlaywrightTestConfig = {
         'demo',
         'e2e'
       ],
+      outputFile: 'sauce-test-report.json',
     }],
     ['line'],
   ],

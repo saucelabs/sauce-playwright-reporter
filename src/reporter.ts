@@ -3,7 +3,7 @@ import * as path from 'path';
 import { randomBytes } from 'crypto';
 import os from 'os';
 import SauceLabs from 'saucelabs';
-import { TestRun, Suite as SauceSuite, Status, Attachment } from '@saucelabs/sauce-json-reporter';
+import { TestRun, Suite as SauceSuite, Status } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
 type SauceRegion = 'us-west-1' | 'eu-central-1' | 'staging';
@@ -18,6 +18,7 @@ type Config = {
   tags?: string[];
   region?: SauceRegion;
   tld?: string;
+  outputFile?: string;
 };
 
 type ReportsRequestBody = {
@@ -41,14 +42,14 @@ type Asset = {
 };
 
 export default class SauceReporter implements Reporter {
-  jobUrls: JobUrl[];
   projects: { [k: string] : any };
 
   buildName: string;
   tags: string[];
   region: SauceRegion;
+  outputFile?: string;
 
-  api: SauceLabs;
+  api?: SauceLabs;
 
   rootSuite?: PlaywrightSuite;
 
@@ -58,12 +59,12 @@ export default class SauceReporter implements Reporter {
   endedAt?: Date;
 
   constructor (reporterConfig: Config) {
-    this.jobUrls = [];
     this.projects = {};
 
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
     this.region = reporterConfig?.region || 'us-west-1';
+    this.outputFile = reporterConfig.outputFile;
 
     let reporterVersion = 'unknown';
     try {
@@ -72,15 +73,19 @@ export default class SauceReporter implements Reporter {
     // eslint-disable-next-line no-empty
     } catch (e) {}
 
-    this.api = new SauceLabs({
-      user: process.env.SAUCE_USERNAME || '',
-      key: process.env.SAUCE_ACCESS_KEY || '',
-      region: this.region,
-      tld: this.region === 'staging' ? 'net' : 'com',
-      headers: {
-        'User-Agent': `playwright-reporter/${reporterVersion}`
-      },
-    });
+    if (process.env.SAUCE_USERNAME && process.env.SAUCE_USERNAME !== '' && process.env.SAUCE_ACCESS_KEY && process.env.SAUCE_ACCESS_KEY !== '') {
+      this.api = new SauceLabs({
+        user: process.env.SAUCE_USERNAME,
+        key: process.env.SAUCE_ACCESS_KEY,
+        region: this.region,
+        tld: this.region === 'staging' ? 'net' : 'com',
+        headers: {
+          'User-Agent': `playwright-reporter/${reporterVersion}`
+        },
+      });
+    } else {
+      console.warn('$SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to SauceLabs');
+    }
 
     this.playwrightVersion = 'unknown';
   }
@@ -107,18 +112,38 @@ export default class SauceReporter implements Reporter {
     this.endedAt = new Date();
 
     const jobUrls = [];
+    const suites = [];
     for (const projectSuite of this.rootSuite.suites) {
-      const id = await this.reportProject(projectSuite);
-      jobUrls.push({
-        url: this.getJobUrl(id, this.region),
-        name: projectSuite.title,
-      });
+      const { report, assets } = this.createSauceReport(projectSuite);
+
+      const id = await this.reportToSauce(projectSuite, report, assets);
+
+      if (id) {
+        jobUrls.push({
+          url: this.getJobUrl(id, this.region),
+          name: projectSuite.title,
+        });
+      }
+
+      suites.push(...report.suites);
     }
 
     this.displayReportedJobs(jobUrls);
+
+    if (this.outputFile) {
+      const report = new TestRun();
+      for (const s of suites) {
+        report.addSuite(s);
+      }
+      this.reportToFile(report);
+    }
   }
 
   displayReportedJobs (jobs: JobUrl[]) {
+    if (jobs.length < 1) {
+      return;
+    }
+
     console.log(`\nReported jobs to Sauce Labs:`);
     for (const job of jobs) {
       console.log(`  - ${job.name}: ${job.url}`);
@@ -263,7 +288,16 @@ ${err.stack}
     };
   }
 
-  async reportProject(projectSuite: PlaywrightSuite) {
+  reportToFile(report: TestRun) {
+    if (!this.outputFile) {
+      return;
+    }
+
+    fs.mkdirSync(path.dirname(this.outputFile), { recursive: true });
+    report.toFile(this.outputFile);
+  }
+
+  async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
     const projectConfig = projectSuite.project ||
@@ -272,9 +306,7 @@ ${err.stack}
 
     const consoleLog = this.constructLogFile(projectSuite);
 
-    const { report: sauceReport, assets } = this.createSauceReport(projectSuite);
-
-    const didSuitePass = sauceReport.computeStatus() === Status.Passed;
+    const didSuitePass = report.computeStatus() === Status.Passed;
 
     // Currently no reliable way to get the browser version
     const browserVersion = '1.0';
@@ -292,7 +324,9 @@ ${err.stack}
     });
 
     const sessionID = await this.createJob(jobBody);
-    await this.uploadAssets(sessionID, consoleLog, sauceReport, assets);
+    if (sessionID) {
+      await this.uploadAssets(sessionID, consoleLog, report, assets);
+    }
 
     return sessionID;
   }
@@ -326,7 +360,7 @@ ${err.stack}
     try {
       const resp = await this.api?.createJob(body);
 
-      return resp.ID;
+      return resp?.ID;
     } catch (e) {
       console.error('Create job failed: ', e);
     }
