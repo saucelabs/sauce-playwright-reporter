@@ -83,8 +83,6 @@ export default class SauceReporter implements Reporter {
           'User-Agent': `playwright-reporter/${reporterVersion}`
         },
       });
-    } else {
-      console.warn('$SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to SauceLabs');
     }
 
     this.playwrightVersion = 'unknown';
@@ -141,6 +139,11 @@ export default class SauceReporter implements Reporter {
 
   displayReportedJobs (jobs: JobUrl[]) {
     if (jobs.length < 1) {
+      const msg = `
+No results reported to Sauce. $SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.
+`;
+      console.log(msg);
+      console.log();
       return;
     }
 
