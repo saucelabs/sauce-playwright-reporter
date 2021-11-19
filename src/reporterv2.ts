@@ -1,5 +1,4 @@
 import fs from 'fs';
-import { readFile } from 'fs/promises';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import os from 'os';
@@ -34,6 +33,11 @@ type ReportsRequestBody = {
   build?: string;
   tags?: string[];
   suite?: string;
+};
+
+type Asset = {
+  filename: string;
+  data: Buffer;
 };
 
 export default class SauceReporter implements Reporter {
@@ -171,8 +175,9 @@ export default class SauceReporter implements Reporter {
     return consoleLog;
   }
 
-  constructSauceSuite (rootSuite: PlaywrightSuite) {
+  constructSauceSuite (rootSuite: PlaywrightSuite) : { suite: SauceSuite, assets : Asset[]} {
     const suite = new SauceSuite(rootSuite.title);
+    const assets : Asset[] = [];
 
     for (const testCase of rootSuite.tests) {
       const lastResult = testCase.results[testCase.results.length - 1];
@@ -193,22 +198,50 @@ export default class SauceReporter implements Reporter {
       );
 
       for (const attachment of lastResult.attachments) {
-        const name = attachment.path ? path.basename(attachment.path) : attachment.name;
+        if (!attachment.path && !attachment.body) {
+          break;
+        }
+
         const prefix = randomBytes(16).toString('hex');
-        test.attach({
-          name: `${prefix}-${name}`,
-          path: attachment.path || '',
-          contentType: attachment.contentType,
-        });
+        const filename = `${prefix}-${attachment.name}`;
+
+        let data;
+        if (attachment.path) {
+          try {
+            data = fs.readFileSync(attachment.path);
+          } catch (e) {
+            console.log(`@saucelabs/playwright-reporter: unable to report video file ${attachment.path}: ${e}`);
+          }
+        } else if (attachment.body) {
+          data = attachment.body;
+        }
+
+        if (data) {
+          test.attach({
+            name: attachment.name,
+            path: filename,
+            contentType: attachment.contentType,
+          });
+
+          assets.push({
+            filename,
+            data,
+          });
+        }
       }
     }
 
     for (const subSuite of rootSuite.suites) {
-      const s = this.constructSauceSuite(subSuite);
+      const { suite: s, assets: a } = this.constructSauceSuite(subSuite);
       suite.addSuite(s);
+
+      assets.push(...a);
     }
 
-    return suite;
+    return {
+      suite,
+      assets,
+    };
   }
 
   errorToMessage(err: TestError) {
@@ -216,6 +249,18 @@ export default class SauceReporter implements Reporter {
 
 ${err.stack}
     `;
+  }
+
+  createSauceReport (rootSuite: PlaywrightSuite) : { report: TestRun, assets: Asset[] } {
+    const { suite: sauceSuite, assets } = this.constructSauceSuite(rootSuite);
+
+    const report = new TestRun();
+    report.addSuite(sauceSuite);
+
+    return {
+      report,
+      assets,
+    };
   }
 
   async reportProject(projectSuite: PlaywrightSuite) {
@@ -227,11 +272,7 @@ ${err.stack}
 
     const consoleLog = this.constructLogFile(projectSuite);
 
-    const sauceSuite = this.constructSauceSuite(projectSuite)
-    const attachments = this.findAttachments(sauceSuite);
-
-    const sauceReport = new TestRun();
-    sauceReport.addSuite(sauceSuite);
+    const { report: sauceReport, assets } = this.createSauceReport(projectSuite);
 
     const didSuitePass = sauceReport.computeStatus() === Status.Passed;
 
@@ -251,34 +292,12 @@ ${err.stack}
     });
 
     const sessionID = await this.createJob(jobBody);
-    await this.uploadAssets(sessionID, consoleLog, sauceReport, attachments);
+    await this.uploadAssets(sessionID, consoleLog, sauceReport, assets);
 
     return sessionID;
   }
 
-  findAttachments(suite: SauceSuite) : Attachment[] {
-    const attachments = [];
-    for (const test of suite.tests) {
-      if (!test.attachments) {
-        break;
-      }
-
-      for (const attachment of test.attachments) {
-        attachments.push(attachment);
-      }
-    }
-    for (const subSuite of suite.suites) {
-      const suiteAttachments = this.findAttachments(subSuite);
-
-      attachments.push(...suiteAttachments);
-    }
-
-    return attachments;
-  }
-
-  async uploadAssets (sessionId: string, consoleLog: string, sauceReport: TestRun, attachments: Attachment[]) {
-    const assets = [];
-
+  async uploadAssets (sessionId: string, consoleLog: string, report: TestRun, assets: Asset[]) {
     assets.push({
       filename: 'console.log',
       data: Buffer.from(consoleLog),
@@ -286,24 +305,8 @@ ${err.stack}
 
     assets.push({
       filename: 'sauce-test-report.json',
-      data: Buffer.from(sauceReport.stringify()),
+      data: Buffer.from(report.stringify()),
     });
-
-    for (const attachment of attachments) {
-      if (attachment.path === '') {
-        break;
-      }
-
-      try {
-        const data = await readFile(attachment.path);
-        assets.push({
-          filename: attachment.name,
-          data,
-        });
-      } catch (e) {
-        console.log(`@saucelabs/playwright-reporter: unable to report video file ${attachment.path}: ${e}`);
-      }
-    }
 
     await Promise.all([
       this.api?.uploadJobAssets(sessionId, { files: assets }).then(
