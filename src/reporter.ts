@@ -19,6 +19,7 @@ type Config = {
   region?: SauceRegion;
   tld?: string;
   outputFile?: string;
+  upload?: boolean;
 };
 
 type ReportsRequestBody = {
@@ -48,6 +49,7 @@ export default class SauceReporter implements Reporter {
   tags: string[];
   region: SauceRegion;
   outputFile?: string;
+  shouldUpload: boolean;
 
   api?: SauceLabs;
 
@@ -64,7 +66,8 @@ export default class SauceReporter implements Reporter {
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
     this.region = reporterConfig?.region || 'us-west-1';
-    this.outputFile = reporterConfig.outputFile;
+    this.outputFile = reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
+    this.shouldUpload = reporterConfig?.upload !== false;
 
     let reporterVersion = 'unknown';
     try {
@@ -139,9 +142,11 @@ export default class SauceReporter implements Reporter {
 
   displayReportedJobs (jobs: JobUrl[]) {
     if (jobs.length < 1) {
-      const msg = `
-No results reported to Sauce. $SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.
-`;
+      let msg = '';
+      const hasCredentials = process.env.SAUCE_USERNAME && process.env.SAUCE_USERNAME !== '' && process.env.SAUCE_ACCESS_KEY && process.env.SAUCE_ACCESS_KEY !== '';
+      if (hasCredentials && this.shouldUpload) {
+        msg = `\nNo results reported to Sauce. $SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.`;
+      }
       console.log(msg);
       console.log();
       return;
@@ -300,7 +305,7 @@ ${err.stack}
     report.toFile(this.outputFile);
   }
 
-  async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) {
+  async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) : Promise<string | undefined> {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
     const projectConfig = projectSuite.project ||
@@ -326,12 +331,13 @@ ${err.stack}
       playwrightVersion: this.playwrightVersion,
     });
 
-    const sessionID = await this.createJob(jobBody);
-    if (sessionID) {
-      await this.uploadAssets(sessionID, consoleLog, report, assets);
+    if (this.shouldUpload) {
+      const sessionID = await this.createJob(jobBody);
+      if (sessionID) {
+        await this.uploadAssets(sessionID, consoleLog, report, assets);
+      }
+      return sessionID;
     }
-
-    return sessionID;
   }
 
   async uploadAssets (sessionId: string, consoleLog: string, report: TestRun, assets: Asset[]) {
