@@ -26,8 +26,8 @@
   },
   "homepage": "https://github.com/saucelabs/sauce-playwright-reporter#readme",
   "dependencies": {
-    "saucelabs": "^6.1.0",
-    "shelljs": "^0.8.4"
+    "@saucelabs/sauce-json-reporter": "^0.0.2",
+    "saucelabs": "^7.0.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.16.3",
