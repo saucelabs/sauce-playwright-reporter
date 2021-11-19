@@ -62,7 +62,7 @@ describe('runs tests on cloud', function () {
     const assets = response.data;
     expect(assets['console.log']).toBe('console.log');
 
-    expect(Object.keys(assets).some((key) => key.endsWith('.webm'))).toBe(true);
+    expect(Object.keys(assets).some((key) => key.indexOf('video') != -1)).toBe(true);
   });
 
   test('job has name/tags correctly set', async function () {
