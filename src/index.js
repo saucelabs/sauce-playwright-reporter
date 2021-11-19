@@ -1,3 +1,3 @@
-const SauceReporter = require('./reporterv2');
+const SauceReporter = require('./reporter');
 
 module.exports = SauceReporter;
