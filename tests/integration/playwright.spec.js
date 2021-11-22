@@ -1,6 +1,8 @@
 require('jest');
 
-const {exec} = require('child_process');
+const { exec } = require('child_process');
+const { existsSync } = require('fs');
+const path = require('path');
 const axios = require('axios');
 
 const jobUrlPattern = /https:\/\/app\.saucelabs\.com\/tests\/([0-9a-f]{32})/g
@@ -48,7 +50,11 @@ describe('runs tests on cloud', function () {
     expect(jobs.length).toBe(1);
   });
 
-  test('job has video/console.log attached', async function () {
+  test('local sauce report exists', async function () {
+    expect(existsSync(path.join(__dirname, 'sauce-test-report.json'))).toBe(true);
+  });
+
+  test('job has expected assets attached', async function () {
     let jobId = output.match(jobUrlPattern)[0];
     jobId = jobId.slice(jobId.lastIndexOf('/')+1);
 
@@ -61,7 +67,7 @@ describe('runs tests on cloud', function () {
     });
     const assets = response.data;
     expect(assets['console.log']).toBe('console.log');
-
+    expect(assets['sauce-test-report.json']).toBe('sauce-test-report.json');
     expect(Object.keys(assets).some((key) => key.indexOf('video') != -1)).toBe(true);
   });
 

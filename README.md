@@ -1,6 +1,6 @@
 # sauce-playwright-plugin
 
-This Playwright plugins reports each spec to your Sauce Labs account.
+This Playwright plugins reports each project to your Sauce Labs account.
 
 ## Installation
 
@@ -8,6 +8,14 @@ Install from npm:
 ```
 npm install @saucelabs/playwright-reporter
 ```
+
+### Sauce Labs credentials
+
+`SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` environment variables needs to be set to
+allow the plugin to report your results to Sauce Labs.
+Your Sauce Labs Username and Access Key are available from your
+[dashboard](https://app.saucelabs.com/user-settings).
+
 
 ## Usage
 
@@ -30,14 +38,6 @@ const config = {
   // Rest of your config goes here
 };
 ```
-
-
-### Sauce Labs credentials
-
-`SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` environment variables needs to be set to
-allow the plugin to report your results to Sauce Labs.
-Your Sauce Labs Username and Access Key are available from your
-[dashboard](https://app.saucelabs.com/user-settings).
 
 ### Plugin configuration
 
@@ -62,13 +62,16 @@ const config = {
 
 | Name | Description | Kind |
 | --- | --- | --- |
-| build | Sets a build ID | String |
-| tags | Sets tags | Array of String |
-| region | Sets the region (Default: `us-west-1`) | String |
+| build | Sets a build ID. (Default: `''`) | String |
+| tags | Tags to add to the uploaded Sauce job. (Default: `[]`) | String[] |
+| region | Sets the region. (Default: `us-west-1`) | 'us-west-1' | 'eu-central-1' |
+| upload | Whether to upload report and assets to Sauce (Default: `true`) | boolean |
+| outputFile | The local path to write the sauce test report. | String |
+
+You can also use the `SAUCE_REPORT_OUTPUT_NAME` environment variable as an alternative to the `outputFile` reporter option in your playwright config.
 
 ## Limitations
 
 Some limitations applies to `@saucelabs/playwright-reporter`:
-* Playwright version is not reported to Sauce Labs
-* Browser version is not reported to Sauce Labs
-* If two suites shares the same name, reports may be inacurate
+* Before playwright@v1.16.3, Playwright version is not reported to Sauce Labs.
+* Browser version is not reported to Sauce Labs.
