@@ -64,7 +64,7 @@ const config = {
 | --- | --- | --- |
 | build | Sets a build ID. (Default: `''`) | String |
 | tags | Tags to add to the uploaded Sauce job. (Default: `[]`) | String[] |
-| region | Sets the region. (Default: `us-west-1`) | 'us-west-1' | 'eu-central-1' |
+| region | Sets the region. (Default: `us-west-1`) | `us-west-1` \| `eu-central-1` |
 | upload | Whether to upload report and assets to Sauce (Default: `true`) | boolean |
 | outputFile | The local path to write the sauce test report. | String |
 
