@@ -1,6 +1,6 @@
 {
   "name": "@saucelabs/playwright-reporter",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Reports your tests to Sauce Labs",
   "main": "src/index.js",
   "scripts": {
