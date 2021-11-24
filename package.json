@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "Reports your tests to Sauce Labs",
   "main": "lib/reporter.js",
+  "files": [
+    "lib",
+    "src"
+  ],
   "scripts": {
     "test": "jest",
     "build": "babel --extensions '.ts' src --out-dir lib",
