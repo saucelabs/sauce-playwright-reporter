@@ -2,9 +2,10 @@
   "name": "@saucelabs/playwright-reporter",
   "version": "0.0.1",
   "description": "Reports your tests to Sauce Labs",
-  "main": "src/index.js",
+  "main": "lib/reporter.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "build": "babel --extensions '.ts' src --out-dir lib",
     "lint": "eslint",
     "release": "release-it --github.release",
     "release:ci": "npm run release -- --ci --no-git.requireCleanWorkingDir",
@@ -30,6 +31,10 @@
     "saucelabs": "^7.0.4"
   },
   "devDependencies": {
+    "@babel/cli": "^7.16.0",
+    "@babel/core": "^7.16.0",
+    "@babel/preset-env": "^7.16.4",
+    "@babel/preset-typescript": "^7.16.0",
     "@playwright/test": "^1.16.3",
     "eslint": "^7.32.0",
     "jest": "^27.2.5",

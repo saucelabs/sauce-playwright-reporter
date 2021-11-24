@@ -1,7 +1,7 @@
-import fs from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
-import os from 'os';
+import * as os from 'os';
 import SauceLabs from 'saucelabs';
 import { TestRun, Suite as SauceSuite, Status } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
