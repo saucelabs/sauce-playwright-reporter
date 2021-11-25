@@ -13,7 +13,7 @@ let output;
 
 describe('runs tests on cloud', function () {
   beforeAll(async function () {
-    const playwrightRunCommand = './node_modules/.bin/playwright test';
+    const playwrightRunCommand = 'npx playwright test';
     // Ignore tests that are known to fail
     const args = '--project "Project with assets"';
     const execOpts = {

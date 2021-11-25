@@ -1,3 +1,9 @@
+# Build output
+lib
+
+# Sauce report
+sauce-test-report.json
+
 # Logs
 logs
 *.log
