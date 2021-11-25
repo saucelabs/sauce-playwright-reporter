@@ -11,7 +11,7 @@
     "test": "jest",
     "build": "babel --extensions '.ts' src --out-dir lib",
     "lint": "eslint",
-    "release": "release-it --github.release",
+    "release": "npm run build && release-it --github.release",
     "release:ci": "npm run release -- --ci --no-git.requireCleanWorkingDir",
     "release:patch": "npm run release -- patch",
     "release:minor": "npm run release -- minor",
