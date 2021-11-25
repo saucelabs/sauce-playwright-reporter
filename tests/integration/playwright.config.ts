@@ -2,7 +2,7 @@ import { PlaywrightTestConfig } from '@playwright/test';
 
 const config: PlaywrightTestConfig = {
   reporter: [
-    ['@saucelabs/playwright-reporter', {
+    ['../../lib/reporter.js', {
       region: 'us-west-1',
       buildName: 'Playwright Integration Tests',
       tags: [

@@ -8,7 +8,7 @@
     "src"
   ],
   "scripts": {
-    "test": "jest",
+    "test": "npm run build && jest",
     "build": "babel --extensions '.ts' src --out-dir lib",
     "lint": "eslint",
     "release": "npm run build && release-it --github.release",
