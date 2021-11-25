@@ -25,11 +25,7 @@ jobs:
         run: npm ci
         working-directory: ./tests/integration/
 
-      - name: Link current version of plugin
-        run: npm link ../../
-        working-directory: ./tests/integration/
-
-      - run: npx jest
+      - run: npm test
         env:
           SAUCE_USERNAME: ${{secrets.SAUCE_USERNAME}}
           SAUCE_ACCESS_KEY: ${{secrets.SAUCE_ACCESS_KEY}}
@@ -53,11 +49,7 @@ jobs:
         run: npm ci
         working-directory: ./tests/integration/
 
-      - name: Link current version of plugin
-        run: npm link ../../
-        working-directory: ./tests/integration/
-
-      - run: npx jest
+      - run: npm test
         env:
           SAUCE_USERNAME: ${{secrets.SAUCE_USERNAME}}
           SAUCE_ACCESS_KEY: ${{secrets.SAUCE_ACCESS_KEY}}
