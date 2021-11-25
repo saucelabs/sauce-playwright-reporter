@@ -21,10 +21,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install dependencies (in ./tests/integration/)
-        run: npm ci
-        working-directory: ./tests/integration/
-
       - run: npm test
         env:
           SAUCE_USERNAME: ${{secrets.SAUCE_USERNAME}}
@@ -44,10 +40,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Install dependencies (in ./tests/integration/)
-        run: npm ci
-        working-directory: ./tests/integration/
 
       - run: npm test
         env:
