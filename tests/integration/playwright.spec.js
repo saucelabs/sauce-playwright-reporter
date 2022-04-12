@@ -22,6 +22,7 @@ describe('runs tests on cloud', function () {
         PATH: process.env.PATH,
         SAUCE_USERNAME: process.env.SAUCE_USERNAME,
         SAUCE_ACCESS_KEY: process.env.SAUCE_ACCESS_KEY,
+        SAUCE_VIDEO_START_TIME: process.env.SAUCE_VIDEO_START_TIME,
       },
     };
 
