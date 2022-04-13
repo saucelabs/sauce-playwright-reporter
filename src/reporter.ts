@@ -43,7 +43,7 @@ type Asset = {
 };
 
 export default class SauceReporter implements Reporter {
-  projects: { [k: string] : any };
+  projects: { [k: string]: any };
 
   buildName: string;
   tags: string[];
@@ -60,7 +60,9 @@ export default class SauceReporter implements Reporter {
   startedAt?: Date;
   endedAt?: Date;
 
-  constructor (reporterConfig: Config) {
+  videoStartTime?: number;
+
+  constructor(reporterConfig: Config) {
     this.projects = {};
 
     this.buildName = reporterConfig?.buildName || '';
@@ -89,6 +91,10 @@ export default class SauceReporter implements Reporter {
     }
 
     this.playwrightVersion = 'unknown';
+
+    if (process.env.SAUCE_VIDEO_START_TIME) {
+      this.videoStartTime = new Date(process.env.SAUCE_VIDEO_START_TIME).getTime();
+    }
   }
 
   onBegin (config: FullConfig, suite: PlaywrightSuite) {
@@ -222,12 +228,17 @@ export default class SauceReporter implements Reporter {
       }
 
       const isSkipped = testCase.outcome() === 'skipped';
-      const test = suite.withTest(
-        testCase.title,
-        isSkipped ? Status.Skipped : (testCase.ok() ? Status.Passed : Status.Failed),
-        lastResult.duration,
-        lastResult.error ? this.errorToMessage(lastResult.error) : undefined,
-        lastResult.startTime,
+      let videoTimestamp;
+      if (this.videoStartTime) {
+        videoTimestamp = (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
+      }
+      const test = suite.withTest(testCase.title, {
+        status: isSkipped ? Status.Skipped : (testCase.ok() ? Status.Passed : Status.Failed),
+        duration: lastResult.duration,
+        output: lastResult.error ? this.errorToMessage(lastResult.error) : undefined,
+        startTime: lastResult.startTime,
+        videoTimestamp,
+      }
       );
 
       for (const attachment of lastResult.attachments) {
