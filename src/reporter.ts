@@ -9,11 +9,6 @@ import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } f
 import { Asset, TestComposer } from './testcomposer';
 import { Region } from './region';
 
-type JobUrl = {
-  name: string;
-  url: string;
-};
-
 type Config = {
   buildName?: string;
   tags?: string[];
@@ -126,7 +121,7 @@ export default class SauceReporter implements Reporter {
     }
   }
 
-  displayReportedJobs (jobs: JobUrl[]) {
+  displayReportedJobs (jobs: { name: string, url: string }[]) {
     if (jobs.length < 1) {
       let msg = '';
       const hasCredentials = process.env.SAUCE_USERNAME && process.env.SAUCE_USERNAME !== '' && process.env.SAUCE_ACCESS_KEY && process.env.SAUCE_ACCESS_KEY !== '';
