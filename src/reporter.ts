@@ -83,11 +83,11 @@ export default class SauceReporter implements Reporter {
         user: process.env.SAUCE_USERNAME,
         key: process.env.SAUCE_ACCESS_KEY,
         region: this.region,
-        tld: this.region === 'staging' ? 'net' : 'com',
         headers: {
           'User-Agent': `playwright-reporter/${reporterVersion}`
         },
       });
+      this.api.tld = this.region === 'staging' ? 'net' : 'com';
     }
 
     this.playwrightVersion = 'unknown';
@@ -228,7 +228,7 @@ export default class SauceReporter implements Reporter {
       }
 
       const isSkipped = testCase.outcome() === 'skipped';
-      let videoTimestamp;
+      let videoTimestamp : number;
       if (this.videoStartTime) {
         videoTimestamp = (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
       }
@@ -249,7 +249,7 @@ export default class SauceReporter implements Reporter {
         const prefix = randomBytes(16).toString('hex');
         const filename = `${prefix}-${attachment.name}`;
 
-        let data;
+        let data : Buffer;
         if (attachment.path) {
           try {
             data = fs.readFileSync(attachment.path);
