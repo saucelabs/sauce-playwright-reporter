@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
+import * as stream from "stream";
 import { TestRun, Suite as SauceSuite, Status } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
@@ -31,7 +32,7 @@ export default class SauceReporter implements Reporter {
   outputFile?: string;
   shouldUpload: boolean;
 
-  api: TestComposer;
+  api?: TestComposer;
 
   rootSuite?: PlaywrightSuite;
 
@@ -102,11 +103,11 @@ export default class SauceReporter implements Reporter {
     for (const projectSuite of this.rootSuite.suites) {
       const { report, assets } = this.createSauceReport(projectSuite);
 
-      const { id, url } = await this.reportToSauce(projectSuite, report, assets);
+      const result = await this.reportToSauce(projectSuite, report, assets);
 
-      if (id) {
+      if (result?.id) {
         jobUrls.push({
-          url,
+          url: result.url,
           name: projectSuite.title,
         });
       }
@@ -207,18 +208,15 @@ export default class SauceReporter implements Reporter {
       }
 
       const isSkipped = testCase.outcome() === 'skipped';
-      let videoTimestamp : number;
-      if (this.videoStartTime) {
-        videoTimestamp = (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
-      }
       const test = suite.withTest(testCase.title, {
         status: isSkipped ? Status.Skipped : (testCase.ok() ? Status.Passed : Status.Failed),
         duration: lastResult.duration,
         output: lastResult.error ? this.errorToMessage(lastResult.error) : undefined,
         startTime: lastResult.startTime,
-        videoTimestamp,
+      });
+      if (this.videoStartTime) {
+        test.videoTimestamp = (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
       }
-      );
 
       for (const attachment of lastResult.attachments) {
         if (!attachment.path && !attachment.body) {
@@ -234,10 +232,17 @@ export default class SauceReporter implements Reporter {
           contentType: attachment.contentType,
         });
 
-        assets.push({
-          filename,
-          data: fs.createReadStream(attachment.path || attachment.body),
-        });
+        if (attachment.path) {
+          assets.push({
+            filename,
+            data: fs.createReadStream(attachment.path),
+          });
+        } else if (attachment.body) {
+          assets.push({
+            filename,
+            data: fs.createReadStream(attachment.body),
+          });
+        }
       }
     }
 
@@ -285,7 +290,7 @@ ${err.stack}
   async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) : Promise<{ id: string, url: string } | undefined> {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
-    const projectConfig = projectSuite.project ||
+    const projectConfig = projectSuite.project() ||
       this.projects[projectSuite.title] ||
       this.projects[Object.keys(this.projects)[0]];
 
@@ -297,7 +302,7 @@ ${err.stack}
     const browserVersion = '1.0';
 
     if (this.shouldUpload) {
-      const resp = await this.api.createReport({
+      const resp = await this.api?.createReport({
         name: projectSuite.title,
         browserName: projectConfig?.use?.browserName ?? 'chromium',
         browserVersion,
@@ -310,7 +315,7 @@ ${err.stack}
         build: this.buildName,
         tags: this.tags,
       });
-      if (resp.id) {
+      if (resp?.id) {
         await this.uploadAssets(resp.id, consoleLog, report, assets);
       }
       return resp;
@@ -329,14 +334,14 @@ ${err.stack}
     });
 
     try {
-      const resp = await this.api.uploadAssets(sessionId, assets);
-      if (resp.errors) {
-        for (const err of resp.errors) {
+      const resp = await this.api?.uploadAssets(sessionId, assets);
+      if (resp?.errors) {
+        for (const err of resp?.errors) {
           console.error('Failed to upload asset:', err);
         }
       }
     } catch (e) {
-      console.error('Failed to upload assets:', e.message);
+      console.error('Failed to upload assets:', e);
     }
   }
 

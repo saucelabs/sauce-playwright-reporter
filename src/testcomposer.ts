@@ -1,6 +1,6 @@
 import axios, {AxiosRequestConfig} from "axios";
 import {Region} from "./region";
-import * as FormData from "form-data";
+import FormData from "form-data";
 import * as stream from "stream";
 
 const apiURLMap = new Map<Region, string>([
