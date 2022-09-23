@@ -32,7 +32,8 @@
   "homepage": "https://github.com/saucelabs/sauce-playwright-reporter#readme",
   "dependencies": {
     "@saucelabs/sauce-json-reporter": "1.1.0",
-    "saucelabs": "7.2.0"
+    "axios": "0.27.2",
+    "form-data": "4.0.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.16.0",
@@ -42,7 +43,6 @@
     "@playwright/test": "^1.16.3",
     "@typescript-eslint/eslint-plugin": "^5.38.0",
     "@typescript-eslint/parser": "^5.38.0",
-    "axios": "^0.24.0",
     "eslint": "^7.32.0",
     "jest": "^27.2.5",
     "release-it": "^14.11.6",

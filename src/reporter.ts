@@ -2,11 +2,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
-import SauceLabs from 'saucelabs';
 import { TestRun, Suite as SauceSuite, Status } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
-type SauceRegion = 'us-west-1' | 'eu-central-1' | 'staging';
+import { Asset, TestComposer } from './testcomposer';
+import { Region } from './region';
 
 type JobUrl = {
   name: string;
@@ -16,30 +16,10 @@ type JobUrl = {
 type Config = {
   buildName?: string;
   tags?: string[];
-  region?: SauceRegion;
+  region?: Region;
   tld?: string;
   outputFile?: string;
   upload?: boolean;
-};
-
-type ReportsRequestBody = {
-  name?: string;
-  browserName?: string;
-  browserVersion?: string;
-  platformName?: string;
-  framework?: string;
-  frameworkVersion?: string;
-  passed?: boolean;
-  startTime: string;
-  endTime: string;
-  build?: string;
-  tags?: string[];
-  suite?: string;
-};
-
-type Asset = {
-  filename: string;
-  data: Buffer;
 };
 
 export default class SauceReporter implements Reporter {
@@ -47,11 +27,11 @@ export default class SauceReporter implements Reporter {
 
   buildName: string;
   tags: string[];
-  region: SauceRegion;
+  region: Region;
   outputFile?: string;
   shouldUpload: boolean;
 
-  api?: SauceLabs;
+  api: TestComposer;
 
   rootSuite?: PlaywrightSuite;
 
@@ -67,7 +47,7 @@ export default class SauceReporter implements Reporter {
 
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
-    this.region = reporterConfig?.region || 'us-west-1';
+    this.region = reporterConfig?.region || Region.USWest1;
     this.outputFile = reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.shouldUpload = reporterConfig?.upload !== false;
 
@@ -79,15 +59,14 @@ export default class SauceReporter implements Reporter {
     } catch (e) {}
 
     if (process.env.SAUCE_USERNAME && process.env.SAUCE_USERNAME !== '' && process.env.SAUCE_ACCESS_KEY && process.env.SAUCE_ACCESS_KEY !== '') {
-      this.api = new SauceLabs({
-        user: process.env.SAUCE_USERNAME,
-        key: process.env.SAUCE_ACCESS_KEY,
+      this.api = new TestComposer({
         region: this.region,
+        username: process.env.SAUCE_USERNAME,
+        accessKey: process.env.SAUCE_ACCESS_KEY,
         headers: {
-          'User-Agent': `playwright-reporter/${reporterVersion}`
+          'User-Agent': `playwright-reporter/${reporterVersion}`,
         },
       });
-      this.api.tld = this.region === 'staging' ? 'net' : 'com';
     }
 
     this.playwrightVersion = 'unknown';
@@ -123,11 +102,11 @@ export default class SauceReporter implements Reporter {
     for (const projectSuite of this.rootSuite.suites) {
       const { report, assets } = this.createSauceReport(projectSuite);
 
-      const id = await this.reportToSauce(projectSuite, report, assets);
+      const { id, url } = await this.reportToSauce(projectSuite, report, assets);
 
       if (id) {
         jobUrls.push({
-          url: this.getJobUrl(id, this.region),
+          url,
           name: projectSuite.title,
         });
       }
@@ -249,29 +228,16 @@ export default class SauceReporter implements Reporter {
         const prefix = randomBytes(16).toString('hex');
         const filename = `${prefix}-${attachment.name}`;
 
-        let data : Buffer;
-        if (attachment.path) {
-          try {
-            data = fs.readFileSync(attachment.path);
-          } catch (e) {
-            console.log(`@saucelabs/playwright-reporter: unable to report video file ${attachment.path}: ${e}`);
-          }
-        } else if (attachment.body) {
-          data = attachment.body;
-        }
+        test.attach({
+          name: attachment.name,
+          path: filename,
+          contentType: attachment.contentType,
+        });
 
-        if (data) {
-          test.attach({
-            name: attachment.name,
-            path: filename,
-            contentType: attachment.contentType,
-          });
-
-          assets.push({
-            filename,
-            data,
-          });
-        }
+        assets.push({
+          filename,
+          data: fs.createReadStream(attachment.path || attachment.body),
+        });
       }
     }
 
@@ -316,7 +282,7 @@ ${err.stack}
     report.toFile(this.outputFile);
   }
 
-  async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) : Promise<string | undefined> {
+  async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) : Promise<{ id: string, url: string } | undefined> {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
     const projectConfig = projectSuite.project ||
@@ -330,88 +296,48 @@ ${err.stack}
     // Currently no reliable way to get the browser version
     const browserVersion = '1.0';
 
-    const jobBody = this.createBody({
-      browserName: projectConfig?.use?.browserName || 'chromium',
-      browserVersion,
-      build: this.buildName,
-      startedAt: this.startedAt ? this.startedAt.toISOString() : new Date().toISOString(),
-      endedAt: this.endedAt ? this.endedAt.toISOString() : new Date().toISOString(),
-      success: didSuitePass,
-      suiteName: projectSuite.title,
-      tags: this.tags,
-      playwrightVersion: this.playwrightVersion,
-    });
-
     if (this.shouldUpload) {
-      const sessionID = await this.createJob(jobBody);
-      if (sessionID) {
-        await this.uploadAssets(sessionID, consoleLog, report, assets);
+      const resp = await this.api.createReport({
+        name: projectSuite.title,
+        browserName: projectConfig?.use?.browserName ?? 'chromium',
+        browserVersion,
+        platformName: this.getPlatformName(),
+        framework: 'playwright',
+        frameworkVersion: this.playwrightVersion,
+        passed: didSuitePass,
+        startTime: this.startedAt?.toISOString() ?? new Date().toISOString(),
+        endTime: this.endedAt?.toISOString() ?? new Date().toISOString(),
+        build: this.buildName,
+        tags: this.tags,
+      });
+      if (resp.id) {
+        await this.uploadAssets(resp.id, consoleLog, report, assets);
       }
-      return sessionID;
+      return resp;
     }
   }
 
   async uploadAssets (sessionId: string, consoleLog: string, report: TestRun, assets: Asset[]) {
     assets.push({
       filename: 'console.log',
-      data: Buffer.from(consoleLog),
+      data: fs.createReadStream(consoleLog),
     });
 
     assets.push({
       filename: 'sauce-test-report.json',
-      data: Buffer.from(report.stringify()),
+      data: fs.createReadStream(report.stringify()),
     });
 
-    await Promise.all([
-      this.api?.uploadJobAssets(sessionId, { files: assets }).then(
-        (resp) => {
-          if (resp.errors) {
-            for (let err of resp.errors) {
-              console.error(err);
-            }
-          }
-        },
-        (e) => console.log('Upload failed:', e.stack)
-      )
-    ]);
-  }
-
-  async createJob (body) {
     try {
-      const resp = await this.api?.createJob(body);
-
-      return resp?.ID;
+      const resp = await this.api.uploadAssets(sessionId, assets);
+      if (resp.errors) {
+        for (const err of resp.errors) {
+          console.error('Failed to upload asset:', err);
+        }
+      }
     } catch (e) {
-      console.error('Create job failed: ', e);
+      console.error('Failed to upload assets:', e.message);
     }
-  }
-
-  createBody (args: {
-    suiteName: string,
-    startedAt: string,
-    endedAt: string,
-    success: boolean,
-    tags: string[],
-    build: string,
-    browserName: string,
-    browserVersion: string,
-    playwrightVersion: string,
-  }) : ReportsRequestBody {
-
-    return {
-      name: args.suiteName,
-      startTime: args.startedAt,
-      endTime: args.endedAt,
-      framework: 'playwright',
-      frameworkVersion: args.playwrightVersion,
-      suite: args.suiteName,
-      passed: args.success,
-      tags: args.tags,
-      build: args.build,
-      browserName: args.browserName,
-      browserVersion: args.browserVersion,
-      platformName: this.getPlatformName(),
-    };
   }
 
   getPlatformName () {
@@ -425,14 +351,5 @@ ${err.stack}
       default:
         return 'unknown';
     }
-  }
-
-  getJobUrl (sessionId: string, region: SauceRegion) {
-    const tld = region === 'staging' ? 'net' : 'com';
-
-    if (region === 'us-west-1') {
-      return `https://app.saucelabs.com/tests/${sessionId}`
-    }
-    return `https://app.${region}.saucelabs.${tld}/tests/${sessionId}`;
   }
 }
