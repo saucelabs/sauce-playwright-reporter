@@ -9,14 +9,14 @@ import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } f
 import { Asset, TestComposer } from './testcomposer';
 import { Region } from './region';
 
-type Config = {
+export interface Config {
   buildName?: string;
   tags?: string[];
   region?: Region;
   tld?: string;
   outputFile?: string;
   upload?: boolean;
-};
+}
 
 export default class SauceReporter implements Reporter {
   projects: { [k: string]: any };
@@ -301,11 +301,12 @@ ${err.stack}
 
     // Currently no reliable way to get the browser version
     const browserVersion = '1.0';
+    const browserName = projectConfig?.use?.browserName as string ?? 'chromium';
 
     if (this.shouldUpload) {
       const resp = await this.api?.createReport({
         name: projectSuite.title,
-        browserName: projectConfig?.use?.browserName ?? 'chromium',
+        browserName: `playwright-${browserName}`,
         browserVersion,
         platformName: this.getPlatformName(),
         framework: 'playwright',
@@ -355,7 +356,7 @@ ${err.stack}
   getPlatformName () {
     switch (os.platform()) {
       case 'darwin':
-        return `Mac ${os.release()}`;
+        return `darwin ${os.release()}`;
       case 'win32':
         return `windows ${os.release()}`;
       case 'linux':
