@@ -223,8 +223,14 @@ export default class SauceReporter implements Reporter {
           break;
         }
 
-        const prefix = randomBytes(16).toString('hex');
-        const filename = `${prefix}-${attachment.name}`;
+        const suffix = randomBytes(16).toString('hex');
+        let filename = `${attachment.name}-${suffix}`;
+
+        if (attachment.contentType.endsWith('png')) {
+          filename = `${filename}.png`;
+        } else if (attachment.contentType.endsWith('webm')) {
+          filename= `${filename}.webm`;
+        }
 
         test.attach({
           name: attachment.name,
@@ -323,14 +329,20 @@ ${err.stack}
   }
 
   async uploadAssets (sessionId: string, consoleLog: string, report: TestRun, assets: Asset[]) {
+    const logStream = new stream.Readable();
+    logStream.push(consoleLog)
+    logStream.push(null);
     assets.push({
       filename: 'console.log',
-      data: fs.createReadStream(consoleLog),
+      data: logStream,
     });
 
+    const reportStream = new stream.Readable();
+    reportStream.push(report.stringify());
+    reportStream.push(null);
     assets.push({
       filename: 'sauce-test-report.json',
-      data: fs.createReadStream(report.stringify()),
+      data: reportStream,
     });
 
     try {
