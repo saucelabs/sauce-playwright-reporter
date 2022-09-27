@@ -225,10 +225,12 @@ export default class SauceReporter implements Reporter {
         const suffix = randomBytes(16).toString('hex');
         let filename = `${attachment.name}-${suffix}`;
 
-        if (attachment.contentType.endsWith('png')) {
-          filename = `${filename}.png`;
-        } else if (attachment.contentType.endsWith('webm')) {
-          filename= `${filename}.webm`;
+        if (path.extname(filename) === '') {
+          if (attachment.contentType.endsWith('png')) {
+            filename = `${filename}.png`;
+          } else if (attachment.contentType.endsWith('webm')) {
+            filename= `${filename}.webm`;
+          }
         }
 
         test.attach({
