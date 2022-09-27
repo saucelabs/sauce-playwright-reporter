@@ -3,11 +3,12 @@ import * as path from 'path';
 import { randomBytes } from 'crypto';
 import * as os from 'os';
 import * as stream from "stream";
-import { TestRun, Suite as SauceSuite, Status } from '@saucelabs/sauce-json-reporter';
+import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
 import { Asset, TestComposer } from './testcomposer';
 import { Region } from './region';
+import { getLines } from './code';
 
 export interface Config {
   buildName?: string;
@@ -95,8 +96,8 @@ export default class SauceReporter implements Reporter {
 
     const jobUrls = [];
     const suites = [];
-    for (const projectSuite of this.rootSuite.suites) {
-      const { report, assets } = this.createSauceReport(projectSuite);
+    for await (const projectSuite of this.rootSuite.suites) {
+      const { report, assets } = await this.createSauceReport(projectSuite);
 
       const result = await this.reportToSauce(projectSuite, report, assets);
 
@@ -189,7 +190,7 @@ export default class SauceReporter implements Reporter {
     return consoleLog;
   }
 
-  constructSauceSuite (rootSuite: PlaywrightSuite) : { suite: SauceSuite, assets : Asset[]} {
+  async constructSauceSuite (rootSuite: PlaywrightSuite) {
     const suite = new SauceSuite(rootSuite.title);
     const assets : Asset[] = [];
 
@@ -202,12 +203,15 @@ export default class SauceReporter implements Reporter {
         break;
       }
 
+      const lines = await getLines(testCase);
+
       const isSkipped = testCase.outcome() === 'skipped';
       const test = suite.withTest(testCase.title, {
         status: isSkipped ? Status.Skipped : (testCase.ok() ? Status.Passed : Status.Failed),
         duration: lastResult.duration,
         output: lastResult.error ? this.errorToMessage(lastResult.error) : undefined,
         startTime: lastResult.startTime,
+        code: new TestCode(lines),
       });
       if (this.videoStartTime) {
         test.videoTimestamp = (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
@@ -247,8 +251,8 @@ export default class SauceReporter implements Reporter {
       }
     }
 
-    for (const subSuite of rootSuite.suites) {
-      const { suite: s, assets: a } = this.constructSauceSuite(subSuite);
+    for await (const subSuite of rootSuite.suites) {
+      const { suite: s, assets: a } = await this.constructSauceSuite(subSuite);
       suite.addSuite(s);
 
       assets.push(...a);
@@ -267,8 +271,8 @@ ${err.stack}
     `;
   }
 
-  createSauceReport (rootSuite: PlaywrightSuite) : { report: TestRun, assets: Asset[] } {
-    const { suite: sauceSuite, assets } = this.constructSauceSuite(rootSuite);
+  async createSauceReport (rootSuite: PlaywrightSuite) {
+    const { suite: sauceSuite, assets } = await this.constructSauceSuite(rootSuite);
 
     const report = new TestRun();
     report.addSuite(sauceSuite);
