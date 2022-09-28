@@ -97,7 +97,7 @@ export default class SauceReporter implements Reporter {
     const jobUrls = [];
     const suites = [];
     for await (const projectSuite of this.rootSuite.suites) {
-      const { report, assets } = await this.createSauceReport(projectSuite);
+      const { report, assets } = this.createSauceReport(projectSuite);
 
       const result = await this.reportToSauce(projectSuite, report, assets);
 
@@ -190,7 +190,7 @@ export default class SauceReporter implements Reporter {
     return consoleLog;
   }
 
-  async constructSauceSuite (rootSuite: PlaywrightSuite) {
+  constructSauceSuite (rootSuite: PlaywrightSuite) {
     const suite = new SauceSuite(rootSuite.title);
     const assets : Asset[] = [];
 
@@ -203,7 +203,7 @@ export default class SauceReporter implements Reporter {
         break;
       }
 
-      const lines = await getLines(testCase);
+      const lines = getLines(testCase);
 
       const isSkipped = testCase.outcome() === 'skipped';
       const test = suite.withTest(testCase.title, {
@@ -253,8 +253,8 @@ export default class SauceReporter implements Reporter {
       }
     }
 
-    for await (const subSuite of rootSuite.suites) {
-      const { suite: s, assets: a } = await this.constructSauceSuite(subSuite);
+    for (const subSuite of rootSuite.suites) {
+      const { suite: s, assets: a } = this.constructSauceSuite(subSuite);
       suite.addSuite(s);
 
       assets.push(...a);
@@ -273,8 +273,8 @@ ${err.stack}
     `;
   }
 
-  async createSauceReport (rootSuite: PlaywrightSuite) {
-    const { suite: sauceSuite, assets } = await this.constructSauceSuite(rootSuite);
+  createSauceReport (rootSuite: PlaywrightSuite) {
+    const { suite: sauceSuite, assets } = this.constructSauceSuite(rootSuite);
 
     const report = new TestRun();
     report.addSuite(sauceSuite);

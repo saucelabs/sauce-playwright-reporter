@@ -8,30 +8,24 @@ import { TestCase } from "@playwright/test/reporter";
  *
  * NOTE: This does not return the entire body of a TestCase, only the TestSteps
  */
-export async function getLines(testCase: TestCase) {
+export function getLines(testCase: TestCase) {
   const result = testCase.results[testCase.results.length - 1];
-  const stepLines = new Set(
-    result.steps
-      .map((step) => step.location?.line)
-      .filter((line): line is number => line !== undefined));
+  const stepLines = result.steps
+    .map((step) => step.location?.line)
+    .filter((line): line is number => line !== undefined);
 
-  const fileStream = fs.createReadStream(testCase.location.file);
+  const file = fs.readFileSync(testCase.location.file, { encoding: 'utf8' });
+  const fileLines = file.split(/\r?\n/);
 
-  const rl = readline.createInterface({
-    input: fileStream,
-    // NOTE: we use the crlfDelay option to recognize all instances of CR LF ('\r\n') as a single line break.
-    crlfDelay: Infinity,
-  });
+  const lines : Set<string> = new Set();
 
-  const lines : string[] = [];
-  let currLine = 1;
-
-  for await (const l of rl) {
-    if (stepLines.has(currLine)) {
-      lines.push(l.trim());
+  for (const stepLine of stepLines) {
+    if (stepLine <= fileLines.length) {
+      const fileLine = fileLines[stepLine - 1];
+      lines.add(fileLine.trim());
     }
-    currLine++;
   }
 
-  return lines;
+  // NOTE: Converting Set to Array here preserves insertion order
+  return Array.from(lines);
 }
