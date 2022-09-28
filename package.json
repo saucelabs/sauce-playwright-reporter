@@ -8,7 +8,7 @@
     "src"
   ],
   "scripts": {
-    "install-playwright": "npm i @playwright/test --no-save && playwright install",
+    "install-playwright": "playwright install",
     "test": "npm run install-playwright && npm run build && jest",
     "build": "tsc",
     "lint": "eslint",
