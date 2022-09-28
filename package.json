@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "install-playwright": "npm i @playwright/test --no-save && playwright install",
-    "test":  "npm run install-playwright && npm run build && jest",
+    "test": "npm run install-playwright && npm run build && jest",
     "build": "tsc",
     "lint": "eslint",
     "release": "npm run build && release-it --github.release",
@@ -37,6 +37,7 @@
     "form-data": "4.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.26.1",
     "@tsconfig/node14": "^1.0.3",
     "@typescript-eslint/eslint-plugin": "^5.38.0",
     "@typescript-eslint/parser": "^5.38.0",
