@@ -216,6 +216,11 @@ export default class SauceReporter implements Reporter {
       if (this.videoStartTime) {
         test.videoTimestamp = (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
       }
+      if (testCase.id) {
+        test.metadata = {
+          id: testCase.id,
+        };
+      }
 
       for (const attachment of lastResult.attachments) {
         if (!attachment.path && !attachment.body) {
