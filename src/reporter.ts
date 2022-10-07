@@ -6,8 +6,7 @@ import * as stream from "stream";
 import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
-import { Asset, TestComposer } from './testcomposer';
-import { Region } from './region';
+import { Asset, Region, TestComposer } from '@saucelabs/testcomposer';
 import { getLines } from './code';
 
 export interface Config {
