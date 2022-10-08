@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { randomBytes } from 'crypto';
 import * as os from 'os';
+import MD5 from "crypto-js/md5";
 import * as stream from "stream";
 import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
@@ -226,7 +226,7 @@ export default class SauceReporter implements Reporter {
           break;
         }
 
-        const suffix = randomBytes(16).toString('hex');
+        const suffix = MD5(attachment.path || '').toString();
         let filename = `${attachment.name}-${suffix}`;
 
         if (path.extname(filename) === '') {
