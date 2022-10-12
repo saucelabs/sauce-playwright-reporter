@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { randomBytes } from 'crypto';
 import * as os from 'os';
 import * as stream from "stream";
 import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
@@ -226,17 +225,7 @@ export default class SauceReporter implements Reporter {
           break;
         }
 
-        const suffix = randomBytes(16).toString('hex');
-        let filename = `${attachment.name}-${suffix}`;
-
-        if (path.extname(filename) === '') {
-          if (attachment.contentType.endsWith('png')) {
-            filename = `${filename}.png`;
-          } else if (attachment.contentType.endsWith('webm')) {
-            filename= `${filename}.webm`;
-          }
-        }
-
+        const filename = `${path.basename(path.dirname(attachment.path || ''))}-${path.basename(attachment.path || '')}`;
         test.attach({
           name: attachment.name,
           path: filename,
