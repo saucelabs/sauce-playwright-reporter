@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import MD5 from "crypto-js/md5";
 import * as stream from "stream";
 import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
