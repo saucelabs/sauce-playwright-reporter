@@ -189,7 +189,7 @@ export default class SauceReporter implements Reporter {
   }
 
   constructSauceSuite (rootSuite: PlaywrightSuite) {
-    const suite = new SauceSuite(rootSuite.title);
+    const suite = new SauceSuite(rootSuite.title || 'chromium');
     const assets : Asset[] = [];
 
     for (const testCase of rootSuite.tests) {
