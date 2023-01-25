@@ -150,7 +150,6 @@ export default class SauceReporter implements Reporter {
       sauce_job: {
         id: jobId,
       },
-      // FIXME
       browser: `playwright-${this.getBrowserName(projectSuite)}`,
       tags: this.tags,
       os: this.getPlatformName(),
