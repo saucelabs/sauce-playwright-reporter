@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as stream from "stream";
 import crypto from "crypto";
-import { TestRun, Suite as SauceSuite, Status, TestCode, Test } from '@saucelabs/sauce-json-reporter';
+import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
 import { Asset, Region, TestComposer } from '@saucelabs/testcomposer';
