@@ -75,3 +75,19 @@ You can also use the `SAUCE_REPORT_OUTPUT_NAME` environment variable as an alter
 Some limitations applies to `@saucelabs/playwright-reporter`:
 * Before playwright@v1.16.3, Playwright version is not reported to Sauce Labs.
 * Browser version is not reported to Sauce Labs.
+
+## Development
+
+### Running locally
+
+In order to test the reporter, you'll need to link it to itself then run a test with the reporter set.
+
+```
+$ npm link
+$ npm link @saucelabs/playwright-reporter
+$ npx playwright test  --reporter=@saucelabs/playwright-reporter
+```
+
+### Debug
+
+Once you `npm link`, you can run your playwright tests with the environment variable `DEBUG="@saucelabs/playwright-reporter:*"` to see additional debug output.
