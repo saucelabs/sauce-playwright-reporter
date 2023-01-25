@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as stream from "stream";
 import crypto from "crypto";
-import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
+import { TestRun, Suite as SauceSuite, Status, TestCode, Test } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
 import { Asset, Region, TestComposer } from '@saucelabs/testcomposer';
@@ -167,24 +167,27 @@ export default class SauceReporter implements Reporter {
     await this.testRunsApi?.create([req]);
   }
 
-  getDuration(rootSuite: PlaywrightSuite) {
+  getDuration(projectSuite: PlaywrightSuite) {
     let duration = 0;
-    for (const testCase of rootSuite.tests) {
-      const lastResult = testCase.results[testCase.results.length-1];
-      duration += lastResult.duration;
+    for (const suite of projectSuite.suites) {
+      suite.tests.forEach((t: TestCase) => {
+        const lastResult = t.results[t.results.length-1];
+        duration += lastResult.duration;
+      })
     }
     return duration;
   }
 
-  findErrors(rootSuite: PlaywrightSuite) {
+  findErrors(projectSuite: PlaywrightSuite) {
     const errors : TestRunError[] = [];
-    for (const testCase of rootSuite.tests) {
-      const lastResult = testCase.results[testCase.results.length-1];
-      if (lastResult.error) {
-        errors.push(lastResult.error);
-      }
+    for (const suite of projectSuite.suites) {
+      suite.tests.forEach((t: TestCase) => {
+        const lastResult = t.results[t.results.length-1];
+        if (lastResult.error) {
+          errors.push(lastResult.error)
+        }
+      })
     }
-    
     return errors;
   }
 
