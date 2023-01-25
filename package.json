@@ -33,7 +33,8 @@
   "homepage": "https://github.com/saucelabs/sauce-playwright-reporter#readme",
   "dependencies": {
     "@saucelabs/sauce-json-reporter": "1.1.0",
-    "@saucelabs/testcomposer": "^1.0.0"
+    "@saucelabs/testcomposer": "^1.0.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@playwright/test": "1.29.2",
