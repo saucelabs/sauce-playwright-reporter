@@ -2,11 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as stream from "stream";
+import { v4 as uuidv4 } from 'uuid';
 import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
 import { Asset, Region, TestComposer } from '@saucelabs/testcomposer';
 import { getLines } from './code';
+import { TestRuns as TestRunsApi, TestRunError, TestRunRequestBody } from './api';
+import { CI, IS_CI } from './ci';
 
 export interface Config {
   buildName?: string;
@@ -27,6 +30,7 @@ export default class SauceReporter implements Reporter {
   shouldUpload: boolean;
 
   api?: TestComposer;
+  testRunsApi?: TestRunsApi;
 
   rootSuite?: PlaywrightSuite;
 
@@ -42,7 +46,7 @@ export default class SauceReporter implements Reporter {
 
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
-    this.region = reporterConfig?.region || Region.USWest1;
+    this.region = reporterConfig?.region || 'us-west-1';
     this.outputFile = reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.shouldUpload = reporterConfig?.upload !== false;
 
@@ -62,6 +66,11 @@ export default class SauceReporter implements Reporter {
           'User-Agent': `playwright-reporter/${reporterVersion}`,
         },
       });
+      this.testRunsApi = new TestRunsApi({
+        region: this.region,
+        username: process.env.SAUCE_USERNAME,
+        accessKey: process.env.SAUCE_ACCESS_KEY,
+      })
     }
 
     this.playwrightVersion = 'unknown';
@@ -104,6 +113,12 @@ export default class SauceReporter implements Reporter {
           url: result.url,
           name: projectSuite.title,
         });
+        try {
+          await this.reportTestRun(projectSuite, report, result?.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (e: any) {
+          console.warn('failed to send report to insights, ', e.stack())
+        }
       }
 
       suites.push(...report.suites);
@@ -118,6 +133,74 @@ export default class SauceReporter implements Reporter {
       }
       this.reportToFile(report);
     }
+  }
+
+  async reportTestRun(projectSuite: PlaywrightSuite, report: TestRun, jobId: string) {
+    const req : TestRunRequestBody = {
+      // TODO: After dropping nodev14 support, can use crypto.randomUUID
+      id: uuidv4(),
+      name: projectSuite.title,
+      start_time: this.startedAt?.toISOString() || '',
+      end_time: this.endedAt?.toISOString() || '',
+      duration: this.getDuration(projectSuite),
+      platform: 'other',
+      type: 'web',
+      framework: 'playwright',
+      status: report.computeStatus(),
+      errors: this.findErrors(projectSuite),
+      sauce_job: {
+        id: jobId,
+        name: projectSuite.title,
+      },
+      browser: `playwright-${this.getBrowserName(projectSuite)}`,
+      tags: this.tags,
+      build_name: this.buildName,
+      os: this.getPlatformName(),
+    }
+    if (IS_CI) {
+      req.ci = {
+        ref_name: CI.refName,
+        commit_sha: CI.sha,
+        repository: CI.repo,
+        branch: CI.refName,
+      }
+    }
+
+    await this.testRunsApi?.create([req]);
+  }
+
+  getDuration(projectSuite: PlaywrightSuite) {
+    let duration = 0;
+    for (const suite of projectSuite.suites) {
+      suite.tests.forEach((t: TestCase) => {
+        const lastResult = t.results[t.results.length-1];
+        duration += lastResult.duration;
+      })
+    }
+    return duration;
+  }
+
+  findErrors(projectSuite: PlaywrightSuite) {
+    const errors : TestRunError[] = [];
+    for (const suite of projectSuite.suites) {
+      suite.tests.forEach((t: TestCase) => {
+        const lastResult = t.results[t.results.length-1];
+        if (lastResult.error) {
+          errors.push(lastResult.error)
+        }
+      })
+    }
+    return errors;
+  }
+
+  getBrowserName(projectSuite: PlaywrightSuite) {
+    // Select project configuration and default to first available project.
+    // Playwright version >= 1.16.3 will contain the project config directly.
+    const projectConfig = projectSuite.project() ||
+      this.projects[projectSuite.title] ||
+      this.projects[Object.keys(this.projects)[0]];
+
+    return projectConfig?.use?.browserName as string ?? 'chromium';
   }
 
   displayReportedJobs (jobs: { name: string, url: string }[]) {
@@ -288,19 +371,12 @@ ${err.stack}
   }
 
   async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) : Promise<{ id: string, url: string } | undefined> {
-    // Select project configuration and default to first available project.
-    // Playwright version >= 1.16.3 will contain the project config directly.
-    const projectConfig = projectSuite.project() ||
-      this.projects[projectSuite.title] ||
-      this.projects[Object.keys(this.projects)[0]];
-
     const consoleLog = this.constructLogFile(projectSuite);
-
     const didSuitePass = report.computeStatus() === Status.Passed;
 
     // Currently no reliable way to get the browser version
     const browserVersion = '1.0';
-    const browserName = projectConfig?.use?.browserName as string ?? 'chromium';
+    const browserName = this.getBrowserName(projectSuite)
 
     if (this.shouldUpload) {
       const resp = await this.api?.createReport({
