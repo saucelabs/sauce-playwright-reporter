@@ -35,14 +35,12 @@
     "@saucelabs/sauce-json-reporter": "1.1.0",
     "@saucelabs/testcomposer": "^1.0.0",
     "axios": "0.27.2",
-    "debug": "^4.3.4",
-    "uuid": "^9.0.0"
+    "debug": "^4.3.4"
   },
   "devDependencies": {
     "@playwright/test": "1.29.2",
     "@tsconfig/node14": "^1.0.3",
     "@types/debug": "^4.1.7",
-    "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.38.0",
     "@typescript-eslint/parser": "^5.38.0",
     "eslint": "^7.32.0",
