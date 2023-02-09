@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as stream from "stream";
-import { v4 as uuidv4 } from 'uuid';
 import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
 import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
 
@@ -137,8 +136,6 @@ export default class SauceReporter implements Reporter {
 
   async reportTestRun(projectSuite: PlaywrightSuite, report: TestRun, jobId: string) {
     const req : TestRunRequestBody = {
-      // TODO: After dropping nodev14 support, can use crypto.randomUUID
-      id: uuidv4(),
       name: projectSuite.title,
       start_time: this.startedAt?.toISOString() || '',
       end_time: this.endedAt?.toISOString() || '',
