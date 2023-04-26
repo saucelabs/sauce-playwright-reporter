@@ -85,7 +85,7 @@ In order to test the reporter, you'll need to link it to itself then run a test 
 ```
 $ npm link
 $ npm link @saucelabs/playwright-reporter
-$ npx playwright test  --reporter=@saucelabs/playwright-reporter
+$ npx playwright test --reporter=@saucelabs/playwright-reporter
 ```
 
 ### Debug
