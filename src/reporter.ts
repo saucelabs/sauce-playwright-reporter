@@ -306,6 +306,11 @@ export default class SauceReporter implements Reporter {
         }
 
         const filename = `${path.basename(path.dirname(attachment.path || ''))}-${path.basename(attachment.path || '')}`;
+        // Rename the screenshot using the generated filename.
+        const ouputDir = rootSuite.project()?.outputDir || '__assets__';
+        const newAttachmentPath = path.join(ouputDir, filename)
+        fs.renameSync(attachment.path || '', newAttachmentPath);
+
         test.attach({
           name: attachment.name,
           path: filename,
@@ -315,7 +320,7 @@ export default class SauceReporter implements Reporter {
         if (attachment.path) {
           assets.push({
             filename,
-            data: fs.createReadStream(attachment.path),
+            data: fs.createReadStream(newAttachmentPath),
           });
         } else if (attachment.body) {
           assets.push({
