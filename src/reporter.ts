@@ -319,7 +319,7 @@ export default class SauceReporter implements Reporter {
           });
         } else if (attachment.body) {
           assets.push({
-            filename,
+            filename: attachment.name,
             data: stream.Readable.from(attachment.body),
           });
         }
