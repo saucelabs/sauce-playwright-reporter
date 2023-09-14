@@ -305,7 +305,7 @@ export default class SauceReporter implements Reporter {
           break;
         }
 
-        const filename = `${path.basename(path.dirname(attachment.path || ''))}-${path.basename(attachment.path || '')}`;
+        const filename = path.basename(attachment.path || '');
         test.attach({
           name: attachment.name,
           path: filename,
@@ -319,7 +319,7 @@ export default class SauceReporter implements Reporter {
           });
         } else if (attachment.body) {
           assets.push({
-            filename,
+            filename: attachment.name,
             data: stream.Readable.from(attachment.body),
           });
         }
