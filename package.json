@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.38.1",
-    "@tsconfig/node14": "^1.0.3",
+    "@tsconfig/node20": "^20.1.2",
     "@types/debug": "^4.1.9",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.7.4",

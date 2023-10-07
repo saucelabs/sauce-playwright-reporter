@@ -9,15 +9,17 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
+          node-version-file: '.nvmrc'
+          cache: 'npm'
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 14
+      - name: Install Dependencies
+        run: npm ci
 
-      - run: npm ci
-
-      - run: npm run lint
+      - name: Lint
+        run: npm run lint
