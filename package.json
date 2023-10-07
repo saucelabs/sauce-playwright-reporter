@@ -24,6 +24,9 @@
   },
   "author": "devx <devx@saucelabs.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=16.13.2"
+  },
   "publishConfig": {
     "access": "public"
   },
