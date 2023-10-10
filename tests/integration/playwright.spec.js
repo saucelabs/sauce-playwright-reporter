@@ -13,6 +13,10 @@ let output;
 
 describe('runs tests on cloud', function () {
   beforeAll(async function () {
+    if (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY) {
+      throw new Error('Please set SAUCE_USERNAME and SAUCE_ACCESS_KEY env variables');
+    }
+
     const playwrightRunCommand = 'npx playwright test';
     // Ignore tests that are known to fail
     const args = '--project "Project with assets"';
