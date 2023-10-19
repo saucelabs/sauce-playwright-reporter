@@ -5,7 +5,11 @@ test('should verify title of the page', async ({ page }, testInfo) => {
 
   const path = testInfo.outputPath('screenshot.png');
   await page.screenshot({ path });
-  testInfo.attachments.push({ name: 'screenshot', path, contentType: 'image/png' });
+  testInfo.attachments.push({
+    name: 'screenshot',
+    path,
+    contentType: 'image/png',
+  });
 
   expect(await page.title()).toBe('Swag Labs');
 });
