@@ -2,16 +2,15 @@ import { PlaywrightTestConfig } from '@playwright/test';
 
 const config: PlaywrightTestConfig = {
   reporter: [
-    ['../../lib/reporter.js', {
-      region: 'us-west-1',
-      buildName: 'Playwright Integration Tests',
-      tags: [
-        'playwright',
-        'demo',
-        'e2e'
-      ],
-      outputFile: 'sauce-test-report.json',
-    }],
+    [
+      '../../lib/reporter.js',
+      {
+        region: 'us-west-1',
+        buildName: 'Playwright Integration Tests',
+        tags: ['playwright', 'demo', 'e2e'],
+        outputFile: 'sauce-test-report.json',
+      },
+    ],
     ['line'],
   ],
   testDir: 'tests',
@@ -20,12 +19,11 @@ const config: PlaywrightTestConfig = {
       name: 'Passing Suites',
       use: {
         browserName: 'chromium',
-
       },
-      testMatch: "tests/nesting.example.test.js",
+      testMatch: 'tests/nesting.example.test.js',
     },
     {
-      name: "Project with assets",
+      name: 'Project with assets',
       testMatch: 'tests/simple.test.js',
       use: {
         video: 'on',
@@ -34,7 +32,7 @@ const config: PlaywrightTestConfig = {
     {
       name: 'Failing Suites',
       testMatch: 'tests/failing.test.js',
-    }
+    },
   ],
 };
 

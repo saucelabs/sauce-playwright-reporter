@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { TestCase } from "@playwright/test/reporter";
+import { TestCase } from '@playwright/test/reporter';
 
 /**
  * From a given TestCase, return the lines of code for the TestSteps
@@ -16,7 +16,7 @@ export function getLines(testCase: TestCase) {
   const file = fs.readFileSync(testCase.location.file, { encoding: 'utf8' });
   const fileLines = file.split(/\r?\n/);
 
-  const lines : Set<string> = new Set();
+  const lines: Set<string> = new Set();
 
   for (const stepLine of stepLines) {
     if (stepLine <= fileLines.length) {

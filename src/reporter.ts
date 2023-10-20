@@ -1,13 +1,28 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import * as stream from "stream";
-import { TestRun, Suite as SauceSuite, Status, TestCode } from '@saucelabs/sauce-json-reporter';
-import { Reporter, FullConfig, Suite as PlaywrightSuite, TestCase, TestError } from '@playwright/test/reporter';
+import * as stream from 'stream';
+import {
+  TestRun,
+  Suite as SauceSuite,
+  Status,
+  TestCode,
+} from '@saucelabs/sauce-json-reporter';
+import {
+  Reporter,
+  FullConfig,
+  Suite as PlaywrightSuite,
+  TestCase,
+  TestError,
+} from '@playwright/test/reporter';
 
 import { Asset, Region, TestComposer } from '@saucelabs/testcomposer';
 import { getLines } from './code';
-import { TestRuns as TestRunsApi, TestRunError, TestRunRequestBody } from './api';
+import {
+  TestRuns as TestRunsApi,
+  TestRunError,
+  TestRunRequestBody,
+} from './api';
 import { CI, IS_CI } from './ci';
 
 export interface Config {
@@ -46,17 +61,26 @@ export default class SauceReporter implements Reporter {
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
     this.region = reporterConfig?.region || 'us-west-1';
-    this.outputFile = reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
+    this.outputFile =
+      reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.shouldUpload = reporterConfig?.upload !== false;
 
     let reporterVersion = 'unknown';
     try {
-      const packageData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+      const packageData = JSON.parse(
+        fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'),
+      );
       reporterVersion = packageData.version;
-    // eslint-disable-next-line no-empty
-    } catch (e) {}
+    } catch (e) {
+      /* empty */
+    }
 
-    if (process.env.SAUCE_USERNAME && process.env.SAUCE_USERNAME !== '' && process.env.SAUCE_ACCESS_KEY && process.env.SAUCE_ACCESS_KEY !== '') {
+    if (
+      process.env.SAUCE_USERNAME &&
+      process.env.SAUCE_USERNAME !== '' &&
+      process.env.SAUCE_ACCESS_KEY &&
+      process.env.SAUCE_ACCESS_KEY !== ''
+    ) {
       this.api = new TestComposer({
         region: this.region,
         username: process.env.SAUCE_USERNAME,
@@ -69,17 +93,19 @@ export default class SauceReporter implements Reporter {
         region: this.region,
         username: process.env.SAUCE_USERNAME,
         accessKey: process.env.SAUCE_ACCESS_KEY,
-      })
+      });
     }
 
     this.playwrightVersion = 'unknown';
 
     if (process.env.SAUCE_VIDEO_START_TIME) {
-      this.videoStartTime = new Date(process.env.SAUCE_VIDEO_START_TIME).getTime();
+      this.videoStartTime = new Date(
+        process.env.SAUCE_VIDEO_START_TIME,
+      ).getTime();
     }
   }
 
-  onBegin (config: FullConfig, suite: PlaywrightSuite) {
+  onBegin(config: FullConfig, suite: PlaywrightSuite) {
     this.startedAt = new Date();
 
     if (config.version) {
@@ -93,7 +119,7 @@ export default class SauceReporter implements Reporter {
     }
   }
 
-  async onEnd () {
+  async onEnd() {
     if (!this.rootSuite) {
       return;
     }
@@ -114,9 +140,8 @@ export default class SauceReporter implements Reporter {
         });
         try {
           await this.reportTestRun(projectSuite, report, result?.id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
-          console.warn('failed to send report to insights, ', e.stack())
+          console.warn('failed to send report to insights, ', e.stack());
         }
       }
 
@@ -134,8 +159,12 @@ export default class SauceReporter implements Reporter {
     }
   }
 
-  async reportTestRun(projectSuite: PlaywrightSuite, report: TestRun, jobId: string) {
-    const req : TestRunRequestBody = {
+  async reportTestRun(
+    projectSuite: PlaywrightSuite,
+    report: TestRun,
+    jobId: string,
+  ) {
+    const req: TestRunRequestBody = {
       name: projectSuite.title,
       start_time: this.startedAt?.toISOString() || '',
       end_time: this.endedAt?.toISOString() || '',
@@ -153,14 +182,14 @@ export default class SauceReporter implements Reporter {
       tags: this.tags,
       build_name: this.buildName,
       os: this.getPlatformName(),
-    }
+    };
     if (IS_CI) {
       req.ci = {
         ref_name: CI.refName,
         commit_sha: CI.sha,
         repository: CI.repo,
         branch: CI.refName,
-      }
+      };
     }
 
     await this.testRunsApi?.create([req]);
@@ -170,22 +199,22 @@ export default class SauceReporter implements Reporter {
     let duration = 0;
     for (const suite of projectSuite.suites) {
       suite.tests.forEach((t: TestCase) => {
-        const lastResult = t.results[t.results.length-1];
+        const lastResult = t.results[t.results.length - 1];
         duration += lastResult.duration;
-      })
+      });
     }
     return duration;
   }
 
   findErrors(projectSuite: PlaywrightSuite) {
-    const errors : TestRunError[] = [];
+    const errors: TestRunError[] = [];
     for (const suite of projectSuite.suites) {
       suite.tests.forEach((t: TestCase) => {
-        const lastResult = t.results[t.results.length-1];
+        const lastResult = t.results[t.results.length - 1];
         if (lastResult.error) {
-          errors.push(lastResult.error)
+          errors.push(lastResult.error);
         }
-      })
+      });
     }
     return errors;
   }
@@ -193,17 +222,22 @@ export default class SauceReporter implements Reporter {
   getBrowserName(projectSuite: PlaywrightSuite) {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
-    const projectConfig = projectSuite.project() ||
+    const projectConfig =
+      projectSuite.project() ||
       this.projects[projectSuite.title] ||
       this.projects[Object.keys(this.projects)[0]];
 
-    return projectConfig?.use?.browserName as string ?? 'chromium';
+    return (projectConfig?.use?.browserName as string) ?? 'chromium';
   }
 
-  displayReportedJobs (jobs: { name: string, url: string }[]) {
+  displayReportedJobs(jobs: { name: string; url: string }[]) {
     if (jobs.length < 1) {
       let msg = '';
-      const hasCredentials = process.env.SAUCE_USERNAME && process.env.SAUCE_USERNAME !== '' && process.env.SAUCE_ACCESS_KEY && process.env.SAUCE_ACCESS_KEY !== '';
+      const hasCredentials =
+        process.env.SAUCE_USERNAME &&
+        process.env.SAUCE_USERNAME !== '' &&
+        process.env.SAUCE_ACCESS_KEY &&
+        process.env.SAUCE_ACCESS_KEY !== '';
       if (hasCredentials && this.shouldUpload) {
         msg = `\nNo results reported to Sauce. $SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.`;
       }
@@ -224,36 +258,34 @@ export default class SauceReporter implements Reporter {
     console.log();
   }
 
-  constructLogFile (projectSuite: PlaywrightSuite) {
+  constructLogFile(projectSuite: PlaywrightSuite) {
     let consoleLog = `Project: ${projectSuite.title}\n`;
     for (const fileSuite of projectSuite.suites) {
       consoleLog = `${consoleLog}\nFile: ${fileSuite.title}\n\n`;
       consoleLog = consoleLog.concat(
-        this.formatTestCasesResults(fileSuite.tests, '')
+        this.formatTestCasesResults(fileSuite.tests, ''),
       );
 
       for (const suite of fileSuite.suites) {
-        consoleLog = consoleLog.concat(
-          this.formatSuiteResults(suite)
-        );
+        consoleLog = consoleLog.concat(this.formatSuiteResults(suite));
       }
     }
 
     return consoleLog;
   }
 
-  formatSuiteResults (suite: PlaywrightSuite, level = 0) {
+  formatSuiteResults(suite: PlaywrightSuite, level = 0) {
     const padding = '  '.repeat(level);
 
-    let consoleLog = `\n${padding}${suite.title}:\n`
+    let consoleLog = `\n${padding}${suite.title}:\n`;
 
     consoleLog = consoleLog.concat(
-      this.formatTestCasesResults(suite.tests, padding)
+      this.formatTestCasesResults(suite.tests, padding),
     );
 
     for (const subSuite of suite.suites) {
       consoleLog = consoleLog.concat(
-        this.formatSuiteResults(subSuite, level+1)
+        this.formatSuiteResults(subSuite, level + 1),
       );
     }
     return consoleLog;
@@ -262,15 +294,18 @@ export default class SauceReporter implements Reporter {
   formatTestCasesResults(testCases: TestCase[], padding: string) {
     let consoleLog = '';
     for (const testCase of testCases) {
-      const icon = testCase.results.filter((r) => r.status === 'passed').length > 0 ? '✓' : '✗';
+      const icon =
+        testCase.results.filter((r) => r.status === 'passed').length > 0
+          ? '✓'
+          : '✗';
       consoleLog = consoleLog.concat(`${padding}${icon} ${testCase.title}\n`);
     }
     return consoleLog;
   }
 
-  constructSauceSuite (rootSuite: PlaywrightSuite) {
+  constructSauceSuite(rootSuite: PlaywrightSuite) {
     const suite = new SauceSuite(rootSuite.title);
-    const assets : Asset[] = [];
+    const assets: Asset[] = [];
 
     for (const testCase of rootSuite.tests) {
       const lastResult = testCase.results[testCase.results.length - 1];
@@ -285,14 +320,21 @@ export default class SauceReporter implements Reporter {
 
       const isSkipped = testCase.outcome() === 'skipped';
       const test = suite.withTest(testCase.title, {
-        status: isSkipped ? Status.Skipped : (testCase.ok() ? Status.Passed : Status.Failed),
+        status: isSkipped
+          ? Status.Skipped
+          : testCase.ok()
+          ? Status.Passed
+          : Status.Failed,
         duration: lastResult.duration,
-        output: lastResult.error ? this.errorToMessage(lastResult.error) : undefined,
+        output: lastResult.error
+          ? this.errorToMessage(lastResult.error)
+          : undefined,
         startTime: lastResult.startTime,
         code: new TestCode(lines),
       });
       if (this.videoStartTime) {
-        test.videoTimestamp = (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
+        test.videoTimestamp =
+          (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
       }
       if (testCase.id) {
         test.metadata = {
@@ -346,7 +388,7 @@ ${err.stack}
     `;
   }
 
-  createSauceReport (rootSuite: PlaywrightSuite) {
+  createSauceReport(rootSuite: PlaywrightSuite) {
     const { suite: sauceSuite, assets } = this.constructSauceSuite(rootSuite);
 
     const report = new TestRun();
@@ -367,13 +409,17 @@ ${err.stack}
     report.toFile(this.outputFile);
   }
 
-  async reportToSauce(projectSuite: PlaywrightSuite, report: TestRun, assets: Asset[]) : Promise<{ id: string, url: string } | undefined> {
+  async reportToSauce(
+    projectSuite: PlaywrightSuite,
+    report: TestRun,
+    assets: Asset[],
+  ): Promise<{ id: string; url: string } | undefined> {
     const consoleLog = this.constructLogFile(projectSuite);
     const didSuitePass = report.computeStatus() === Status.Passed;
 
     // Currently no reliable way to get the browser version
     const browserVersion = '1.0';
-    const browserName = this.getBrowserName(projectSuite)
+    const browserName = this.getBrowserName(projectSuite);
 
     if (this.shouldUpload) {
       const resp = await this.api?.createReport({
@@ -396,9 +442,14 @@ ${err.stack}
     }
   }
 
-  async uploadAssets (sessionId: string, consoleLog: string, report: TestRun, assets: Asset[]) {
+  async uploadAssets(
+    sessionId: string,
+    consoleLog: string,
+    report: TestRun,
+    assets: Asset[],
+  ) {
     const logStream = new stream.Readable();
-    logStream.push(consoleLog)
+    logStream.push(consoleLog);
     logStream.push(null);
     assets.push({
       filename: 'console.log',
@@ -416,7 +467,8 @@ ${err.stack}
     try {
       const resp = await this.api?.uploadAssets(sessionId, assets);
       if (resp?.errors) {
-        for (const err of resp?.errors) {
+        const errors = resp?.errors;
+        for (const err of errors) {
           console.error('Failed to upload asset:', err);
         }
       }
@@ -425,7 +477,7 @@ ${err.stack}
     }
   }
 
-  getPlatformName () {
+  getPlatformName() {
     switch (os.platform()) {
       case 'darwin':
         return `darwin ${os.release()}`;

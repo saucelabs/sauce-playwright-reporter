@@ -4,14 +4,14 @@
   "description": "Reports your tests to Sauce Labs",
   "main": "lib/reporter.js",
   "files": [
-    "lib",
-    "src"
+    "lib"
   ],
   "scripts": {
     "install-playwright": "playwright install",
     "test": "npm run install-playwright && npm run build && jest",
     "build": "tsc",
-    "lint": "eslint",
+    "lint": "prettier --check '**/*.{js,ts,mjs,cjs}' && eslint",
+    "fmt": "prettier --write '**/*.{js,ts,mjs,cjs}'",
     "release": "npm run build && release-it --github.release",
     "release:ci": "npm run release -- --ci --no-git.requireCleanWorkingDir",
     "release:patch": "npm run release -- patch",
@@ -44,10 +44,15 @@
     "@playwright/test": "1.38.1",
     "@tsconfig/node20": "^20.1.2",
     "@types/debug": "^4.1.9",
-    "@typescript-eslint/eslint-plugin": "^6.7.4",
-    "@typescript-eslint/parser": "^6.7.4",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@typescript-eslint/parser": "^6.8.0",
     "eslint": "^8.51.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-jest": "^27.4.2",
+    "eslint-plugin-prettier": "^5.0.1",
+    "husky": "^8.0.3",
     "jest": "^29.7.0",
+    "prettier": "^3.0.3",
     "release-it": "^16.2.1",
     "typescript": "^5.2.2"
   },

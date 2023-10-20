@@ -5,16 +5,17 @@ const { existsSync } = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-const jobUrlPattern = /https:\/\/app\.saucelabs\.com\/tests\/([0-9a-f]{32})/g
+const jobUrlPattern = /https:\/\/app\.saucelabs\.com\/tests\/([0-9a-f]{32})/g;
 
 let hasError;
 let output;
 
-
 describe('runs tests on cloud', function () {
   beforeAll(async function () {
     if (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY) {
-      throw new Error('Please set SAUCE_USERNAME and SAUCE_ACCESS_KEY env variables');
+      throw new Error(
+        'Please set SAUCE_USERNAME and SAUCE_ACCESS_KEY env variables',
+      );
     }
 
     const playwrightRunCommand = 'npx playwright test';
@@ -31,11 +32,15 @@ describe('runs tests on cloud', function () {
     };
 
     const p = new Promise((resolve) => {
-      exec(`${playwrightRunCommand} ${args}`, execOpts, async function (err, stdout) {
-        hasError = err;
-        output = stdout;
-        resolve();
-      });
+      exec(
+        `${playwrightRunCommand} ${args}`,
+        execOpts,
+        async function (err, stdout) {
+          hasError = err;
+          output = stdout;
+          resolve();
+        },
+      );
     });
     await p;
   });
@@ -49,43 +54,47 @@ describe('runs tests on cloud', function () {
     const jobIDs = output.match(jobUrlPattern);
 
     for (const job of jobIDs) {
-      const idx = job.slice(job.lastIndexOf('/')+1);
+      const idx = job.slice(job.lastIndexOf('/') + 1);
       jobs.push(idx);
     }
     expect(jobs.length).toBe(1);
   });
 
   test('local sauce report exists', async function () {
-    expect(existsSync(path.join(__dirname, 'sauce-test-report.json'))).toBe(true);
+    expect(existsSync(path.join(__dirname, 'sauce-test-report.json'))).toBe(
+      true,
+    );
   });
 
   test('job has expected assets attached', async function () {
     let jobId = output.match(jobUrlPattern)[0];
-    jobId = jobId.slice(jobId.lastIndexOf('/')+1);
+    jobId = jobId.slice(jobId.lastIndexOf('/') + 1);
 
     const url = `https://api.us-west-1.saucelabs.com/rest/v1/jobs/${jobId}/assets`;
     const response = await axios.get(url, {
       auth: {
         username: process.env.SAUCE_USERNAME,
         password: process.env.SAUCE_ACCESS_KEY,
-      }
+      },
     });
     const assets = response.data;
     expect(assets['console.log']).toBe('console.log');
     expect(assets['sauce-test-report.json']).toBe('sauce-test-report.json');
-    expect(Object.keys(assets).some((key) => key.indexOf('video') != -1)).toBe(true);
+    expect(Object.keys(assets).some((key) => key.indexOf('video') != -1)).toBe(
+      true,
+    );
   });
 
   test('job has name/tags correctly set', async function () {
     let jobId = output.match(jobUrlPattern)[0];
-    jobId = jobId.slice(jobId.lastIndexOf('/')+1);
+    jobId = jobId.slice(jobId.lastIndexOf('/') + 1);
 
     const url = `https://api.us-west-1.saucelabs.com/rest/v1/jobs/${jobId}`;
     const response = await axios.get(url, {
       auth: {
         username: process.env.SAUCE_USERNAME,
         password: process.env.SAUCE_ACCESS_KEY,
-      }
+      },
     });
     const jobDetails = response.data;
 
