@@ -10,7 +10,7 @@
     "install-playwright": "playwright install",
     "test": "npm run install-playwright && npm run build && jest",
     "build": "tsc",
-    "lint": "prettier --check '**/*.{js,ts,mjs,cjs}' && eslint",
+    "lint": "prettier --check '**/*.{js,ts,mjs,cjs}' && eslint .",
     "fmt": "prettier --write '**/*.{js,ts,mjs,cjs}'",
     "release": "npm run build && release-it --github.release",
     "release:ci": "npm run release -- --ci --no-git.requireCleanWorkingDir",
