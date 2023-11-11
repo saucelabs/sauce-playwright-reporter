@@ -37,7 +37,7 @@
   "dependencies": {
     "@saucelabs/sauce-json-reporter": "3.0.3",
     "@saucelabs/testcomposer": "^1.2.1",
-    "axios": "1.5.1",
+    "axios": "1.6.0",
     "debug": "^4.3.4"
   },
   "devDependencies": {
