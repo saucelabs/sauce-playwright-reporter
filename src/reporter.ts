@@ -168,7 +168,7 @@ export default class SauceReporter implements Reporter {
 
       suites.push(...report.suites);
 
-      if (this.syncAssetsDir) {
+      if (this.isSyncAssetEnabled()) {
         this.syncAssets(assets, this.syncAssetsDir);
       }
     }
