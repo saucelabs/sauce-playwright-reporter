@@ -553,7 +553,10 @@ ${err.stack}
   syncAssets(assets: Asset[]) {
     assets.forEach((asset) => {
       if (this.isAssetTypeSyncable(asset.filename) && asset.path) {
-        fs.copyFileSync(asset.path, path.join(this.syncAssetsDir, asset.filename));
+        fs.copyFileSync(
+          asset.path,
+          path.join(this.syncAssetsDir, asset.filename),
+        );
       }
     });
   }
