@@ -130,3 +130,4 @@ node
 
 Cache/
 .DS_Store
+.vscode

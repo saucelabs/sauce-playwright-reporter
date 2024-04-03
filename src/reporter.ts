@@ -32,7 +32,21 @@ export interface Config {
   tld?: string;
   outputFile?: string;
   upload?: boolean;
+  syncAssetsDir: string;
 }
+
+const syncAssetsTypes = [
+  '.log',
+  '.json',
+  '.xml',
+  '.mp4',
+  '.webm',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+];
 
 export default class SauceReporter implements Reporter {
   projects: { [k: string]: any };
@@ -42,6 +56,7 @@ export default class SauceReporter implements Reporter {
   region: Region;
   outputFile?: string;
   shouldUpload: boolean;
+  syncAssetsDir?: string;
 
   api?: TestComposer;
   testRunsApi?: TestRunsApi;
@@ -64,6 +79,12 @@ export default class SauceReporter implements Reporter {
     this.outputFile =
       reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.shouldUpload = reporterConfig?.upload !== false;
+
+    this.syncAssetsDir =
+      reporterConfig.syncAssetsDir || process.env.SAUCE_ASSETS_DIR;
+    if (this.syncAssetsDir && !fs.existsSync(this.syncAssetsDir)) {
+      fs.mkdirSync(this.syncAssetsDir, { recursive: true });
+    }
 
     let reporterVersion = 'unknown';
     try {
@@ -146,6 +167,10 @@ export default class SauceReporter implements Reporter {
       }
 
       suites.push(...report.suites);
+
+      if (this.syncAssetsDir) {
+        this.syncAssets(assets, this.syncAssetsDir);
+      }
     }
 
     this.displayReportedJobs(jobUrls);
@@ -347,7 +372,10 @@ export default class SauceReporter implements Reporter {
           break;
         }
 
-        const filename = path.basename(attachment.path || '');
+        const filename = this.resolveAssetName(
+          test.name,
+          path.basename(attachment.path || ''),
+        );
         test.attach({
           name: attachment.name,
           path: filename,
@@ -357,6 +385,7 @@ export default class SauceReporter implements Reporter {
         if (attachment.path) {
           assets.push({
             filename,
+            path: attachment.path,
             data: fs.createReadStream(attachment.path),
           });
         } else if (attachment.body) {
@@ -488,5 +517,44 @@ ${err.stack}
       default:
         return 'unknown';
     }
+  }
+
+  // Check if syncAsset is enabled.
+  isSyncAssetEnabled(): boolean {
+    return !!this.syncAssetsDir;
+  }
+
+  // Checks if the file type of a given filename is among the types allowed for syncing.
+  isAssetTypeSyncable(filename: string): boolean {
+    return syncAssetsTypes.includes(path.extname(filename));
+  }
+
+  /**
+   * Resolves the name of an asset file by prefixing it with the test name,
+   * under the condition that the asset filename is provided,
+   * the sync asset feature is enabled, and the asset type is syncable.
+   *
+   * @param {string} testName The name of the test associated with the asset.
+   * @param {string} filename The original filename of the asset.
+   * @returns {string} The resolved asset name, prefixed with the test name if all conditions are met;
+   * otherwise, returns the original filename.
+   */
+  resolveAssetName(testName: string, filename: string): string {
+    if (
+      !filename ||
+      !this.isSyncAssetEnabled() ||
+      !this.isAssetTypeSyncable(filename)
+    ) {
+      return filename;
+    }
+    return `${testName}-${filename}`;
+  }
+
+  syncAssets(assets: Asset[], assetDir: string) {
+    assets.forEach((asset) => {
+      if (this.isAssetTypeSyncable(asset.filename) && asset.path) {
+        fs.copyFileSync(asset.path, path.join(assetDir, asset.filename));
+      }
+    });
   }
 }
