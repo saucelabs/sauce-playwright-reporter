@@ -169,7 +169,7 @@ export default class SauceReporter implements Reporter {
       suites.push(...report.suites);
 
       if (this.isSyncAssetEnabled()) {
-        this.syncAssets(assets, this.syncAssetsDir);
+        this.syncAssets(assets);
       }
     }
 
@@ -550,10 +550,10 @@ ${err.stack}
     return `${testName}-${filename}`;
   }
 
-  syncAssets(assets: Asset[], assetDir: string) {
+  syncAssets(assets: Asset[]) {
     assets.forEach((asset) => {
       if (this.isAssetTypeSyncable(asset.filename) && asset.path) {
-        fs.copyFileSync(asset.path, path.join(assetDir, asset.filename));
+        fs.copyFileSync(asset.path, path.join(this.syncAssetsDir, asset.filename));
       }
     });
   }
