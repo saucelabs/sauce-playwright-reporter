@@ -544,8 +544,8 @@ ${err.stack}
     return !!this.webAssetsDir;
   }
 
-  // Checks if the file type of a given filename is among the types allowed for syncing.
-  isAssetSyncable(filename: string): boolean {
+  // Checks if the file type of a given filename is among the types compatible with the Sauce Labs web UI.
+  isWebAsset(filename: string): boolean {
     return webAssetsTypes.includes(path.extname(filename));
   }
 
