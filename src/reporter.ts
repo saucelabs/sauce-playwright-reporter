@@ -544,8 +544,8 @@ ${err.stack}
     return !!this.webAssetsDir;
   }
 
-  // Checks if the file type of a given filename is among the types allowed for syncing.
-  isAssetTypeSyncable(filename: string): boolean {
+  // Checks if the file is allowed for syncing.
+  isAssetSyncable(filename: string): boolean {
     return webAssetsTypes.includes(path.extname(filename));
   }
 
@@ -563,7 +563,7 @@ ${err.stack}
     if (
       !filename ||
       !this.isSyncAssetEnabled() ||
-      !this.isAssetTypeSyncable(filename)
+      !this.isAssetSyncable(filename)
     ) {
       return filename;
     }
@@ -573,7 +573,7 @@ ${err.stack}
   // Copy Playwright-generated assets to webAssetsDir.
   syncAssets(assets: Asset[]) {
     assets.forEach((asset) => {
-      if (this.isAssetTypeSyncable(asset.filename) && asset.path) {
+      if (this.isAssetSyncable(asset.filename) && asset.path) {
         fs.copyFileSync(
           asset.path,
           path.join(this.webAssetsDir || '', asset.filename),
