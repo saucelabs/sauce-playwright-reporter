@@ -36,7 +36,7 @@
   "homepage": "https://github.com/saucelabs/sauce-playwright-reporter#readme",
   "dependencies": {
     "@saucelabs/sauce-json-reporter": "3.0.3",
-    "@saucelabs/testcomposer": "^1.2.1",
+    "@saucelabs/testcomposer": "2.0.1",
     "axios": "1.5.1",
     "debug": "^4.3.4"
   },
