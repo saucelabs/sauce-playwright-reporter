@@ -544,7 +544,7 @@ ${err.stack}
     return !!this.webAssetsDir;
   }
 
-  // Checks if the file is allowed for syncing.
+  // Checks if the file type of a given filename is among the types allowed for syncing.
   isAssetSyncable(filename: string): boolean {
     return webAssetsTypes.includes(path.extname(filename));
   }
