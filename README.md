@@ -60,14 +60,14 @@ const config = {
 };
 ```
 
-| Name           | Description                                                                                                                 | Kind                         |
-|----------------|-----------------------------------------------------------------------------------------------------------------------------|------------------------------|
-| `build`        | Sets a build ID. <br> Default: `''`                                                                                         | `String`                     |
-| `tags`         | Tags to add to the uploaded Sauce job. <br> Default: `[]`                                                                   | `String[]`                   |
-| `region`       | Sets the region. <br> Default: `us-west-1`                                                                                  | `us-west-1` \| `eu-central-1`|
-| `upload`       | Whether to upload report and assets to Sauce <br> Default: `true`                                                           | `boolean`                    |
-| `outputFile`   | The local path to write the sauce test report. Can be set in env var `SAUCE_REPORT_OUTPUT_NAME`.                            | `String`                     |
-| `syncAssetsDir`| Set the destination folder for syncing attachments. This can be configured via the `SAUCE_ASSETS_DIR` environment variable. | `String`                     |
+| Name           | Description                                                                                                                      | Kind                         |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------|------------------------------|
+| `build`        | Sets a build ID. <br> Default: `''`                                                                                              | `String`                     |
+| `tags`         | Tags to add to the uploaded Sauce job. <br> Default: `[]`                                                                        | `String[]`                   |
+| `region`       | Sets the region. <br> Default: `us-west-1`                                                                                       | `us-west-1` \| `eu-central-1`|
+| `upload`       | Whether to upload report and assets to Sauce <br> Default: `true`                                                                | `boolean`                    |
+| `outputFile`   | The local path to write the sauce test report. Can be set in env var `SAUCE_REPORT_OUTPUT_NAME`.                                 | `String`                     |
+| `syncAssetsDir`| Set the destination folder for syncing attachments. This can be configured via the `SAUCE_SYNC_ASSETS_DIR` environment variable. | `String`                     |
 
 
 ## Limitations

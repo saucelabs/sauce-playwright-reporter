@@ -81,7 +81,7 @@ export default class SauceReporter implements Reporter {
     this.shouldUpload = reporterConfig?.upload !== false;
 
     this.syncAssetsDir =
-      reporterConfig.syncAssetsDir || process.env.SAUCE_ASSETS_DIR;
+      reporterConfig.syncAssetsDir || process.env.SAUCE_SYNC_ASSETS_DIR;
     if (this.syncAssetsDir && !fs.existsSync(this.syncAssetsDir)) {
       fs.mkdirSync(this.syncAssetsDir, { recursive: true });
     }
