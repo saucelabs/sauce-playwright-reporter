@@ -35,6 +35,7 @@ export interface Config {
   syncAssetsDir: string;
 }
 
+// Types of attachments relevant for UI display.
 const syncAssetsTypes = [
   '.log',
   '.json',
@@ -62,6 +63,18 @@ export default class SauceReporter implements Reporter {
    * from the Playwright output directory to the specified sync assets directory.
    * It can be specified through reportConfig.syncAssetsDir or
    * the SAUCE_SYNC_ASSETS_DIR environment variable.
+   * Designed exclusively for Sauce VM.
+   *
+   * Background: A flat uploading approach previously led to file overwrites when
+   * files from different directories shared names, which is a common scenario in
+   * Playwright tests.
+   * We've introduced the saucectl retain artifact feature to bundle the entire
+   * Playwright output folder, preventing such overwrites but leading to the upload
+   * of duplicate assets.
+   *
+   * With changes in the Playwright runner that separate the output from the sauce
+   * assets directory, this feature now copies only necessary attachments,
+   * avoiding duplicate assets and supporting UI display requirements.
    */
   syncAssetsDir?: string;
 
