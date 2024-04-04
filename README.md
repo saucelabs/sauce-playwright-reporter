@@ -60,15 +60,13 @@ const config = {
 };
 ```
 
-| Name | Description | Kind |
-| --- | --- | --- |
-| build | Sets a build ID. (Default: `''`) | String |
-| tags | Tags to add to the uploaded Sauce job. (Default: `[]`) | String[] |
-| region | Sets the region. (Default: `us-west-1`) | `us-west-1` \| `eu-central-1` |
-| upload | Whether to upload report and assets to Sauce (Default: `true`) | boolean |
-| outputFile | The local path to write the sauce test report. | String |
-
-You can also use the `SAUCE_REPORT_OUTPUT_NAME` environment variable as an alternative to the `outputFile` reporter option in your playwright config.
+| Name           | Description                                                                                      | Kind                         |
+|----------------|--------------------------------------------------------------------------------------------------|------------------------------|
+| `build`        | Sets a build ID. <br> Default: `''`                                                              | `String`                     |
+| `tags`         | Tags to add to the uploaded Sauce job. <br> Default: `[]`                                        | `String[]`                   |
+| `region`       | Sets the region. <br> Default: `us-west-1`                                                       | `us-west-1` \| `eu-central-1`|
+| `upload`       | Whether to upload report and assets to Sauce <br> Default: `true`                                | `boolean`                    |
+| `outputFile`   | The local path to write the sauce test report. Can be set in env var `SAUCE_REPORT_OUTPUT_NAME`. | `String`                     |
 
 ## Limitations
 

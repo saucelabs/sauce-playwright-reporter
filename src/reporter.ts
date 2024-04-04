@@ -32,7 +32,23 @@ export interface Config {
   tld?: string;
   outputFile?: string;
   upload?: boolean;
+  webAssetsDir: string;
 }
+
+// Types of attachments relevant for UI display.
+const webAssetsTypes = [
+  '.log',
+  '.json',
+  '.xml',
+  '.txt',
+  '.mp4',
+  '.webm',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.svg',
+];
 
 export default class SauceReporter implements Reporter {
   projects: { [k: string]: any };
@@ -42,6 +58,25 @@ export default class SauceReporter implements Reporter {
   region: Region;
   outputFile?: string;
   shouldUpload: boolean;
+  /*
+   * When webAssetsDir is set, this reporter syncs web UI-related attachments
+   * from the Playwright output directory to the specified web assets directory.
+   * It can be specified through reportConfig.webAssetsDir or
+   * the SAUCE_WEB_ASSETS_DIR environment variable.
+   * Designed exclusively for Sauce VM.
+   *
+   * Background: A flat uploading approach previously led to file overwrites when
+   * files from different directories shared names, which is a common scenario in
+   * Playwright tests.
+   * We've introduced the saucectl retain artifact feature to bundle the entire
+   * Playwright output folder, preventing such overwrites but leading to the upload
+   * of duplicate assets.
+   *
+   * With changes in the Playwright runner that separate the output from the sauce
+   * assets directory, this feature now copies only necessary attachments,
+   * avoiding duplicate assets and supporting UI display requirements.
+   */
+  webAssetsDir?: string;
 
   api?: TestComposer;
   testRunsApi?: TestRunsApi;
@@ -64,6 +99,12 @@ export default class SauceReporter implements Reporter {
     this.outputFile =
       reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.shouldUpload = reporterConfig?.upload !== false;
+
+    this.webAssetsDir =
+      reporterConfig.webAssetsDir || process.env.SAUCE_WEB_ASSETS_DIR;
+    if (this.webAssetsDir && !fs.existsSync(this.webAssetsDir)) {
+      fs.mkdirSync(this.webAssetsDir, { recursive: true });
+    }
 
     let reporterVersion = 'unknown';
     try {
@@ -146,6 +187,10 @@ export default class SauceReporter implements Reporter {
       }
 
       suites.push(...report.suites);
+
+      if (this.isWebAssetSyncEnabled()) {
+        this.syncAssets(assets);
+      }
     }
 
     this.displayReportedJobs(jobUrls);
@@ -347,7 +392,10 @@ export default class SauceReporter implements Reporter {
           break;
         }
 
-        const filename = path.basename(attachment.path || '');
+        const filename = this.resolveAssetName(
+          test.name,
+          path.basename(attachment.path || ''),
+        );
         test.attach({
           name: attachment.name,
           path: filename,
@@ -357,6 +405,7 @@ export default class SauceReporter implements Reporter {
         if (attachment.path) {
           assets.push({
             filename,
+            path: attachment.path,
             data: fs.createReadStream(attachment.path),
           });
         } else if (attachment.body) {
@@ -488,5 +537,48 @@ ${err.stack}
       default:
         return 'unknown';
     }
+  }
+
+  // Check if asset syncing to webAssetDir is enabled.
+  isWebAssetSyncEnabled(): boolean {
+    return !!this.webAssetsDir;
+  }
+
+  // Checks if the file type of a given filename is among the types compatible with the Sauce Labs web UI.
+  isWebAsset(filename: string): boolean {
+    return webAssetsTypes.includes(path.extname(filename));
+  }
+
+  /**
+   * Resolves the name of an asset file by prefixing it with the test name,
+   * under the condition that the asset filename is provided,
+   * the sync asset feature is enabled, and the asset type is syncable.
+   *
+   * @param {string} testName The name of the test associated with the asset.
+   * @param {string} filename The original filename of the asset.
+   * @returns {string} The resolved asset name, prefixed with the test name if all conditions are met;
+   * otherwise, returns the original filename.
+   */
+  resolveAssetName(testName: string, filename: string): string {
+    if (
+      !filename ||
+      !this.isWebAssetSyncEnabled() ||
+      !this.isWebAsset(filename)
+    ) {
+      return filename;
+    }
+    return `${testName}-${filename}`;
+  }
+
+  // Copy Playwright-generated assets to webAssetsDir.
+  syncAssets(assets: Asset[]) {
+    assets.forEach((asset) => {
+      if (this.isWebAsset(asset.filename) && asset.path) {
+        fs.copyFileSync(
+          asset.path,
+          path.join(this.webAssetsDir || '', asset.filename),
+        );
+      }
+    });
   }
 }
