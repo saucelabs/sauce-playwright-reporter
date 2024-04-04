@@ -562,7 +562,7 @@ ${err.stack}
       if (this.isAssetTypeSyncable(asset.filename) && asset.path) {
         fs.copyFileSync(
           asset.path,
-          path.join(this.syncAssetsDir, asset.filename),
+          path.join(this.syncAssetsDir || '', asset.filename),
         );
       }
     });
