@@ -32,11 +32,11 @@ export interface Config {
   tld?: string;
   outputFile?: string;
   upload?: boolean;
-  syncAssetsDir: string;
+  webAssetsDir: string;
 }
 
 // Types of attachments relevant for UI display.
-const syncAssetsTypes = [
+const webAssetsTypes = [
   '.log',
   '.json',
   '.xml',
@@ -59,10 +59,10 @@ export default class SauceReporter implements Reporter {
   outputFile?: string;
   shouldUpload: boolean;
   /*
-   * When syncAssetsDir is set, this reporter syncs web UI-related attachments
-   * from the Playwright output directory to the specified sync assets directory.
-   * It can be specified through reportConfig.syncAssetsDir or
-   * the SAUCE_SYNC_ASSETS_DIR environment variable.
+   * When webAssetsDir is set, this reporter syncs web UI-related attachments
+   * from the Playwright output directory to the specified web assets directory.
+   * It can be specified through reportConfig.webAssetsDir or
+   * the SAUCE_WEB_ASSETS_DIR environment variable.
    * Designed exclusively for Sauce VM.
    *
    * Background: A flat uploading approach previously led to file overwrites when
@@ -76,7 +76,7 @@ export default class SauceReporter implements Reporter {
    * assets directory, this feature now copies only necessary attachments,
    * avoiding duplicate assets and supporting UI display requirements.
    */
-  syncAssetsDir?: string;
+  webAssetsDir?: string;
 
   api?: TestComposer;
   testRunsApi?: TestRunsApi;
@@ -100,10 +100,10 @@ export default class SauceReporter implements Reporter {
       reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.shouldUpload = reporterConfig?.upload !== false;
 
-    this.syncAssetsDir =
-      reporterConfig.syncAssetsDir || process.env.SAUCE_SYNC_ASSETS_DIR;
-    if (this.syncAssetsDir && !fs.existsSync(this.syncAssetsDir)) {
-      fs.mkdirSync(this.syncAssetsDir, { recursive: true });
+    this.webAssetsDir =
+      reporterConfig.webAssetsDir || process.env.SAUCE_WEB_ASSETS_DIR;
+    if (this.webAssetsDir && !fs.existsSync(this.webAssetsDir)) {
+      fs.mkdirSync(this.webAssetsDir, { recursive: true });
     }
 
     let reporterVersion = 'unknown';
@@ -539,14 +539,14 @@ ${err.stack}
     }
   }
 
-  // Check if syncAsset is enabled.
+  // Check if asset syncing to webAssetDir is enabled.
   isSyncAssetEnabled(): boolean {
-    return !!this.syncAssetsDir;
+    return !!this.webAssetsDir;
   }
 
   // Checks if the file type of a given filename is among the types allowed for syncing.
   isAssetTypeSyncable(filename: string): boolean {
-    return syncAssetsTypes.includes(path.extname(filename));
+    return webAssetsTypes.includes(path.extname(filename));
   }
 
   /**
@@ -570,12 +570,13 @@ ${err.stack}
     return `${testName}-${filename}`;
   }
 
+  // Copy Playwright-generated assets to webAssetsDir.
   syncAssets(assets: Asset[]) {
     assets.forEach((asset) => {
       if (this.isAssetTypeSyncable(asset.filename) && asset.path) {
         fs.copyFileSync(
           asset.path,
-          path.join(this.syncAssetsDir || '', asset.filename),
+          path.join(this.webAssetsDir || '', asset.filename),
         );
       }
     });
