@@ -39,6 +39,7 @@ const syncAssetsTypes = [
   '.log',
   '.json',
   '.xml',
+  '.txt',
   '.mp4',
   '.webm',
   '.png',
@@ -56,6 +57,12 @@ export default class SauceReporter implements Reporter {
   region: Region;
   outputFile?: string;
   shouldUpload: boolean;
+  /*
+   * When syncAssetsDir is set, this reporter syncs web UI-related attachments
+   * from the Playwright output directory to the specified sync assets directory.
+   * It can be specified through reportConfig.syncAssetsDir or
+   * the SAUCE_SYNC_ASSETS_DIR environment variable.
+   */
   syncAssetsDir?: string;
 
   api?: TestComposer;
