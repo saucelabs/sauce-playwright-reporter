@@ -188,7 +188,7 @@ export default class SauceReporter implements Reporter {
 
       suites.push(...report.suites);
 
-      if (this.isSyncAssetEnabled()) {
+      if (this.isWebAssetSyncEnabled()) {
         this.syncAssets(assets);
       }
     }
@@ -562,8 +562,8 @@ ${err.stack}
   resolveAssetName(testName: string, filename: string): string {
     if (
       !filename ||
-      !this.isSyncAssetEnabled() ||
-      !this.isAssetSyncable(filename)
+      !this.isWebAssetSyncEnabled() ||
+      !this.isWebAsset(filename)
     ) {
       return filename;
     }
@@ -573,7 +573,7 @@ ${err.stack}
   // Copy Playwright-generated assets to webAssetsDir.
   syncAssets(assets: Asset[]) {
     assets.forEach((asset) => {
-      if (this.isAssetSyncable(asset.filename) && asset.path) {
+      if (this.isWebAsset(asset.filename) && asset.path) {
         fs.copyFileSync(
           asset.path,
           path.join(this.webAssetsDir || '', asset.filename),
