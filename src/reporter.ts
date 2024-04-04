@@ -540,7 +540,7 @@ ${err.stack}
   }
 
   // Check if asset syncing to webAssetDir is enabled.
-  isSyncAssetEnabled(): boolean {
+  isWebAssetSyncEnabled(): boolean {
     return !!this.webAssetsDir;
   }
 
