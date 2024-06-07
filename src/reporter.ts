@@ -368,8 +368,8 @@ export default class SauceReporter implements Reporter {
         status: isSkipped
           ? Status.Skipped
           : testCase.ok()
-          ? Status.Passed
-          : Status.Failed,
+            ? Status.Passed
+            : Status.Failed,
         duration: lastResult.duration,
         output: lastResult.error
           ? this.errorToMessage(lastResult.error)

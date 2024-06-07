@@ -1,36 +1,32 @@
 # sauce-playwright-plugin
 
-This Playwright plugins reports each project to your Sauce Labs account.
+This Playwright plugin reports each project to your Sauce Labs account.
 
 ## Installation
 
 Install from npm:
-```
+```sh
 npm install @saucelabs/playwright-reporter
 ```
 
-### Sauce Labs credentials
+### Sauce Labs Credentials
 
-`SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` environment variables needs to be set to
-allow the plugin to report your results to Sauce Labs.
-Your Sauce Labs Username and Access Key are available from your
-[dashboard](https://app.saucelabs.com/user-settings).
-
+Set the `SAUCE_USERNAME` and `SAUCE_ACCESS_KEY` environment variables to allow the plugin to report your results to Sauce Labs. Your Sauce Labs Username and Access Key are available from your [dashboard](https://app.saucelabs.com/user-settings).
 
 ## Usage
 
-Add to default reporter:
-```
-npx playwright test  --reporter=line,@saucelabs/playwright-reporter
+Add to the default reporter:
+```sh
+npx playwright test --reporter=line,@saucelabs/playwright-reporter
 ```
 
 Use only `@saucelabs/playwright-reporter`:
-```
-npx playwright test  --reporter=@saucelabs/playwright-reporter
+```sh
+npx playwright test --reporter=@saucelabs/playwright-reporter
 ```
 
-You can also configure using `playwright.config.js`. To achieve that, add `'@saucelabs/playwright-reporter'` to the reporter section of your configuration:
-```
+You can also configure it using `playwright.config.js`. To do that, add `'@saucelabs/playwright-reporter'` to the reporter section of your configuration:
+```js
 const config = {
   reporter: [
     ['@saucelabs/playwright-reporter'],
@@ -39,12 +35,12 @@ const config = {
 };
 ```
 
-### Plugin configuration
+### Plugin Configuration
 
-`@saucelabs/playwright-plugin` is configurable through your `playwright.config.js` or `playwright.config.ts` file.
+`@saucelabs/playwright-reporter` is configurable through your `playwright.config.js` or `playwright.config.ts` file.
 
 Example:
-```
+```js
 const config = {
   reporter: [
     ['@saucelabs/playwright-reporter', {
@@ -60,27 +56,27 @@ const config = {
 };
 ```
 
-| Name           | Description                                                                                      | Kind                         |
-|----------------|--------------------------------------------------------------------------------------------------|------------------------------|
-| `build`        | Sets a build ID. <br> Default: `''`                                                              | `String`                     |
-| `tags`         | Tags to add to the uploaded Sauce job. <br> Default: `[]`                                        | `String[]`                   |
-| `region`       | Sets the region. <br> Default: `us-west-1`                                                       | `us-west-1` \| `eu-central-1`|
-| `upload`       | Whether to upload report and assets to Sauce <br> Default: `true`                                | `boolean`                    |
-| `outputFile`   | The local path to write the sauce test report. Can be set in env var `SAUCE_REPORT_OUTPUT_NAME`. | `String`                     |
+| Name         | Description                                                                                      | Type                           |
+|--------------|--------------------------------------------------------------------------------------------------|--------------------------------|
+| `buildName`  | Sets a build ID. <br> Default: `''`                                                              | `string`                       |
+| `tags`       | Tags to add to the uploaded Sauce job. <br> Default: `[]`                                        | `string[]`                     |
+| `region`     | Sets the region. <br> Default: `us-west-1`                                                       | `us-west-1` \| `eu-central-1`  |
+| `upload`     | Whether to upload report and assets to Sauce Labs. <br> Default: `true`                          | `boolean`                      |
+| `outputFile` | The local path to write the Sauce test report. Can be set in env var `SAUCE_REPORT_OUTPUT_NAME`. | `string`                       |
 
 ## Limitations
 
-Some limitations applies to `@saucelabs/playwright-reporter`:
-* Before playwright@v1.16.3, Playwright version is not reported to Sauce Labs.
-* Browser version is not reported to Sauce Labs.
+Some limitations apply to `@saucelabs/playwright-reporter`:
+* For Playwright versions before v1.16.3, the Playwright version is not reported to Sauce Labs.
+* The browser version is not reported to Sauce Labs.
 
 ## Development
 
-### Running locally
+### Running Locally
 
-In order to test the reporter, you'll need to link it to itself then run a test with the reporter set.
+To test the reporter locally, link it to itself and then run a test with the reporter set.
 
-```
+```sh
 $ npm link
 $ npm link @saucelabs/playwright-reporter
 $ npx playwright test --reporter=@saucelabs/playwright-reporter
@@ -88,4 +84,8 @@ $ npx playwright test --reporter=@saucelabs/playwright-reporter
 
 ### Debug
 
-Once you `npm link`, you can run your playwright tests with the environment variable `DEBUG="@saucelabs/playwright-reporter:*"` to see additional debug output.
+After linking with `npm link`, you can run your Playwright tests with the environment variable `DEBUG="@saucelabs/playwright-reporter:*"` to see additional debug output.
+
+```sh
+$ DEBUG="@saucelabs/playwright-reporter:*" npx playwright test --reporter=@saucelabs/playwright-reporter
+```
