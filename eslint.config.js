@@ -8,22 +8,18 @@ module.exports = ts.config(
   ...ts.configs.recommended,
   prettier,
   {
-    plugins: {
-      jest: jest,
-    },
-    rules: {
-      'no-undef': 'off',
-    },
-  },
-  {
     ignores: ['lib/**'],
   },
   {
     files: ['**/*.js', '**/*.ts'],
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
     },
+  },
+  {
+    files: ['tests/**/*.spec.js', 'tests/**/*.spec.ts'],
+    ...jest.configs['flat/recommended'],
   },
   {
     languageOptions: {
@@ -33,6 +29,8 @@ module.exports = ts.config(
         exports: true,
         module: true,
         require: true,
+        process: true,
+        NodeJS: true,
       },
     },
   },
