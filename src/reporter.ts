@@ -182,7 +182,7 @@ export default class SauceReporter implements Reporter {
         try {
           await this.reportTestRun(projectSuite, report, result?.id);
         } catch (e: any) {
-          console.warn('failed to send report to insights, ', e.stack());
+          console.warn('failed to send report to insights: ', e);
         }
       }
 
@@ -244,6 +244,10 @@ export default class SauceReporter implements Reporter {
     let duration = 0;
     for (const suite of projectSuite.suites) {
       suite.tests.forEach((t: TestCase) => {
+        if (t.results.length < 1) {
+          return;
+        }
+
         const lastResult = t.results[t.results.length - 1];
         duration += lastResult.duration;
       });
@@ -255,6 +259,10 @@ export default class SauceReporter implements Reporter {
     const errors: TestRunError[] = [];
     for (const suite of projectSuite.suites) {
       suite.tests.forEach((t: TestCase) => {
+        if (t.results.length < 1) {
+          return;
+        }
+
         const lastResult = t.results[t.results.length - 1];
         if (lastResult.error) {
           errors.push(lastResult.error);
