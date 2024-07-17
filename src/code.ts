@@ -8,6 +8,10 @@ import { TestCase } from '@playwright/test/reporter';
  * NOTE: This does not return the entire body of a TestCase, only the TestSteps
  */
 export function getLines(testCase: TestCase) {
+  if (testCase.results.length === 0) {
+    return [];
+  }
+
   const result = testCase.results[testCase.results.length - 1];
   const stepLines = result.steps
     .map((step) => step.location?.line)

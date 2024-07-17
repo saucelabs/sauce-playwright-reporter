@@ -361,12 +361,25 @@ export default class SauceReporter implements Reporter {
     const assets: Asset[] = [];
 
     for (const testCase of rootSuite.tests) {
-      const lastResult = testCase.results[testCase.results.length - 1];
+      let lastResult = testCase.results[testCase.results.length - 1];
 
-      // TestCase can have 0 results if it was skipped with the skip annotation or
-      // if it was filtered with the grep cli flag
+      // TestCase can have 0 results if it was skipped with the skip annotation,
+      // filtered with the grep cli flag or never executed due to early
+      // termination, such as the fail-fast option `maxFailures`.
       if (!lastResult) {
-        break;
+        lastResult = {
+          duration: 0,
+          errors: [],
+          parallelIndex: 0,
+          retry: 0,
+          startTime: this.startedAt || new Date(),
+          status: 'skipped',
+          stderr: [],
+          stdout: [],
+          steps: [],
+          workerIndex: 0,
+          attachments: [],
+        };
       }
 
       const lines = getLines(testCase);
