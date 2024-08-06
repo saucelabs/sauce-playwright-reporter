@@ -356,7 +356,7 @@ export default class SauceReporter implements Reporter {
     return consoleLog;
   }
 
-  removeAnsi(str: string): string {
+  removeAnsiColors(str: string): string {
     const ansiRegex = new RegExp(
       // eslint-disable-next-line no-control-regex
       '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))',
@@ -402,7 +402,7 @@ export default class SauceReporter implements Reporter {
             : Status.Failed,
         duration: lastResult.duration,
         output: lastResult.error
-          ? this.removeAnsi(this.errorToMessage(lastResult.error))
+          ? this.removeAnsiColors(this.errorToMessage(lastResult.error))
           : undefined,
         startTime: lastResult.startTime,
         code: new TestCode(lines),
