@@ -24,6 +24,7 @@ import {
   TestRunRequestBody,
 } from './api';
 import { CI, IS_CI } from './ci';
+import { Timeline } from './video/timeline';
 
 export interface Config {
   buildName?: string;
@@ -90,6 +91,8 @@ export default class SauceReporter implements Reporter {
 
   videoStartTime?: number;
 
+  timeline: Timeline;
+
   constructor(reporterConfig: Config) {
     this.projects = {};
 
@@ -105,6 +108,8 @@ export default class SauceReporter implements Reporter {
     if (this.webAssetsDir && !fs.existsSync(this.webAssetsDir)) {
       fs.mkdirSync(this.webAssetsDir, { recursive: true });
     }
+
+    this.timeline = new Timeline();
 
     let reporterVersion = 'unknown';
     try {
@@ -445,6 +450,16 @@ export default class SauceReporter implements Reporter {
           });
         }
       }
+
+      const videoAttachment = lastResult.attachments.find((a) => a.contentType.includes('video'));
+      if (videoAttachment) {
+        test.videoTimestamp = this.timeline.duration / 1000;
+
+        this.timeline.addVideo({
+          path: videoAttachment.path ?? '',
+          duration: lastResult.duration,
+        });
+      }
     }
 
     for (const subSuite of rootSuite.suites) {
@@ -472,6 +487,13 @@ ${err.stack}
 
     const report = new TestRun();
     report.addSuite(sauceSuite);
+
+    const mergedVideo = this.timeline.generateVideo();
+    assets.push({
+      filename: 'video.mp4',
+      path: mergedVideo,
+      data: fs.createReadStream(mergedVideo),
+    });
 
     return {
       report,
