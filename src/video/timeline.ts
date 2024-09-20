@@ -3,12 +3,10 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export interface VideoFile {
-  path: string;
-  duration: number;
-}
+import { Syncer, VideoFile } from './sync/types';
+import { Test } from '@saucelabs/sauce-json-reporter';
 
-export class Timeline {
+export class Timeline implements Syncer {
   duration: number;
   videoFiles: VideoFile[];
 
@@ -17,14 +15,16 @@ export class Timeline {
     this.videoFiles = [];
   }
 
-  public reset() {
-    this.duration = 0;
-    this.videoFiles = [];
+  public sync(test: Test, video: VideoFile): void {
+    test.videoTimestamp = this.duration / 1000;
+    this.addVideo(video);
   }
 
   public addVideo(video: VideoFile) {
-    this.videoFiles.push({ ...video });
-    this.duration += video.duration;
+    if (video.path && video.duration) {
+      this.videoFiles.push({ ...video });
+      this.duration += video.duration;
+    }
   }
 
   public generateVideo() {
@@ -51,8 +51,6 @@ export class Timeline {
       outputFile,
     ];
     spawnSync("ffmpeg", args);
-
-    this.reset();
 
     return outputFile;
   }
