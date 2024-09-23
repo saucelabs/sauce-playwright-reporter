@@ -26,8 +26,8 @@ import {
 import { CI, IS_CI } from './ci';
 import {
   Syncer,
-  LocalSyncer,
-  VMSyncer,
+  MergeSyncer,
+  OffsetSyncer,
 } from './video';
 
 export interface Config {
@@ -484,9 +484,9 @@ ${err.stack}
       const offset = new Date(
         process.env.SAUCE_VIDEO_START_TIME,
       ).getTime();
-      syncer = new VMSyncer(offset);
+      syncer = new OffsetSyncer(offset);
     } else if (this.mergeVideos) {
-      syncer = new LocalSyncer();
+      syncer = new MergeSyncer();
     }
 
     const {
@@ -494,8 +494,8 @@ ${err.stack}
       assets,
     } = this.constructSauceSuite(rootSuite, syncer);
 
-    if (syncer instanceof LocalSyncer) {
-      const mergedVideo = syncer.generateVideo();
+    if (syncer instanceof MergeSyncer) {
+      const mergedVideo = syncer.mergeVideos();
       if (mergedVideo) {
         assets.push({
           filename: 'video.mp4',

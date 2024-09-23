@@ -1,7 +1,11 @@
 import { Test } from "@saucelabs/sauce-json-reporter";
 import { Syncer, VideoFile } from "./types";
 
-export class VMSyncer implements Syncer {
+/**
+ * OffsetSyncer is used to synchronize the video start time of a test case
+ * against a simple offset.
+ */
+export class OffsetSyncer implements Syncer {
   private videoOffset: number;
 
   constructor(offset: number) {

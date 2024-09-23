@@ -6,7 +6,13 @@ import { join } from 'node:path';
 import { Syncer, VideoFile } from './types';
 import { Test } from '@saucelabs/sauce-json-reporter';
 
-export class LocalSyncer implements Syncer {
+/**
+ * MergeSyncer is used to synchronize the video start time of a test case with
+ * a collection of video files. Videos are aggregated and their cumulative
+ * runtime is used to mark the video start time of the next test case to be
+ * added.
+ */
+export class MergeSyncer implements Syncer {
   duration: number;
   videoFiles: VideoFile[];
 
@@ -24,7 +30,7 @@ export class LocalSyncer implements Syncer {
     }
   }
 
-  public generateVideo() {
+  public mergeVideos() {
     if (this.videoFiles.length === 0) {
       return;
     }
