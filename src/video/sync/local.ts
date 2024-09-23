@@ -16,18 +16,18 @@ export class LocalSyncer implements Syncer {
   }
 
   public sync(test: Test, video: VideoFile): void {
-    test.videoTimestamp = this.duration / 1000;
-    this.addVideo(video);
-  }
-
-  public addVideo(video: VideoFile) {
     if (video.path && video.duration) {
+      test.videoTimestamp = this.duration / 1000;
+
       this.videoFiles.push({ ...video });
       this.duration += video.duration;
     }
   }
 
   public generateVideo() {
+    if (this.videoFiles.length === 0) {
+      return;
+    }
     const tmpDir = mkdtempSync(join(tmpdir(), 'pw-sauce-video-'));
     const inputFile = join(tmpDir, 'videos.txt');
     const outputFile = join(tmpDir, 'video.mp4');

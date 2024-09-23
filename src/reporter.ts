@@ -496,11 +496,13 @@ ${err.stack}
 
     if (syncer instanceof LocalSyncer) {
       const mergedVideo = syncer.generateVideo();
-      assets.push({
-        filename: 'video.mp4',
-        path: mergedVideo,
-        data: fs.createReadStream(mergedVideo),
-      });
+      if (mergedVideo) {
+        assets.push({
+          filename: 'video.mp4',
+          path: mergedVideo,
+          data: fs.createReadStream(mergedVideo),
+        });
+      }
     }
 
     const report = new TestRun();
