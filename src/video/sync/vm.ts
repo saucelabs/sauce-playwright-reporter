@@ -9,6 +9,6 @@ export class VMSyncer implements Syncer {
   }
 
   public sync(test: Test, _video: VideoFile): void {
-    test.videoTimestamp = test.startTime.getTime() - this.videoOffset;
+    test.videoTimestamp = (test.startTime.getTime() - this.videoOffset) / 1000;
   }
 }
