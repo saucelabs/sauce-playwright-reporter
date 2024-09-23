@@ -34,6 +34,14 @@ export class MergeSyncer implements Syncer {
     if (this.videoFiles.length === 0) {
       return;
     }
+    const hasFFMpeg = spawnSync('ffmpeg', ['-version']).status === 0;
+    if (!hasFFMpeg) {
+      console.error(
+        `Failed to merge videos: ffmpeg could not be found. \
+Ensure ffmpeg is available in your PATH.`);
+      return;
+    }
+
     const tmpDir = mkdtempSync(join(tmpdir(), 'pw-sauce-video-'));
     const inputFile = join(tmpDir, 'videos.txt');
     const outputFile = join(tmpDir, 'video.mp4');
@@ -56,7 +64,15 @@ export class MergeSyncer implements Syncer {
       inputFile,
       outputFile,
     ];
-    spawnSync('ffmpeg', args);
+    const result = spawnSync('ffmpeg', args);
+    if (result.status !== 0) {
+      console.error('\nFailed to merge videos.');
+      console.error('Command:', `ffmpeg ${args.join(' ')}`);
+      console.error(`stdout: ${result.stdout.toString('utf8')}`);
+      console.error(`stderr: ${result.stderr.toString('utf8')}`);
+
+      return;
+    }
 
     return outputFile;
   }
