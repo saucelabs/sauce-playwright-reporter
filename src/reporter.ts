@@ -114,7 +114,7 @@ export default class SauceReporter implements Reporter {
         fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'),
       );
       reporterVersion = packageData.version;
-    } catch (e) {
+    } catch (_e) {
       /* empty */
     }
 

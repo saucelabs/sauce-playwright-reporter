@@ -38,7 +38,8 @@ export class MergeSyncer implements Syncer {
     if (!hasFFMpeg) {
       console.error(
         `Failed to merge videos: ffmpeg could not be found. \
-Ensure ffmpeg is available in your PATH.`);
+Ensure ffmpeg is available in your PATH.`,
+      );
       return;
     }
 
