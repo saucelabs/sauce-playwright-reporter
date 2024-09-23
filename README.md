@@ -76,11 +76,24 @@ Some limitations apply to `@saucelabs/playwright-reporter`:
 
 ## Development
 
-### Running Locally
+### Running integration tests
 
-To test the reporter locally, link it to itself and then run a test with the reporter set.
+There are tests included in `tests/integration` where the reporter is referenced
+directly.
 
 ```sh
+$ npm run build
+$ cd tests/integration
+$ npx playwright test
+```
+
+### Running Locally
+
+If you have playwright tests outside of the repo, you can link and install the
+reporter to run in your external repo.
+
+```sh
+$ npm run build
 $ npm link
 $ npm link @saucelabs/playwright-reporter
 $ npx playwright test --reporter=@saucelabs/playwright-reporter
