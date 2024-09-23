@@ -24,11 +24,7 @@ import {
   TestRunRequestBody,
 } from './api';
 import { CI, IS_CI } from './ci';
-import {
-  Syncer,
-  MergeSyncer,
-  OffsetSyncer,
-} from './video';
+import { Syncer, MergeSyncer, OffsetSyncer } from './video';
 
 export interface Config {
   buildName?: string;
@@ -443,23 +439,21 @@ export default class SauceReporter implements Reporter {
       }
 
       if (videoSyncer) {
-        const videoAttachment = lastResult.attachments
-          .find((a) => a.contentType.includes('video'));
-        videoSyncer.sync(
-          test,
-          {
-            path: videoAttachment?.path,
-            duration: test.duration,
-          },
+        const videoAttachment = lastResult.attachments.find((a) =>
+          a.contentType.includes('video'),
         );
+        videoSyncer.sync(test, {
+          path: videoAttachment?.path,
+          duration: test.duration,
+        });
       }
     }
 
     for (const subSuite of rootSuite.suites) {
-      const {
-        suite: s,
-        assets: a,
-      } = this.constructSauceSuite(subSuite, videoSyncer);
+      const { suite: s, assets: a } = this.constructSauceSuite(
+        subSuite,
+        videoSyncer,
+      );
 
       suite.addSuite(s);
       assets.push(...a);
@@ -481,18 +475,16 @@ ${err.stack}
   createSauceReport(rootSuite: PlaywrightSuite) {
     let syncer: Syncer | null = null;
     if (process.env.SAUCE_VIDEO_START_TIME) {
-      const offset = new Date(
-        process.env.SAUCE_VIDEO_START_TIME,
-      ).getTime();
+      const offset = new Date(process.env.SAUCE_VIDEO_START_TIME).getTime();
       syncer = new OffsetSyncer(offset);
     } else if (this.mergeVideos) {
       syncer = new MergeSyncer();
     }
 
-    const {
-      suite: sauceSuite,
-      assets,
-    } = this.constructSauceSuite(rootSuite, syncer);
+    const { suite: sauceSuite, assets } = this.constructSauceSuite(
+      rootSuite,
+      syncer,
+    );
 
     if (syncer instanceof MergeSyncer) {
       const mergedVideo = syncer.mergeVideos();

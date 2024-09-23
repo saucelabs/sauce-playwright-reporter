@@ -1,5 +1,5 @@
-import { Test } from "@saucelabs/sauce-json-reporter";
-import { Syncer, VideoFile } from "./types";
+import { Test } from '@saucelabs/sauce-json-reporter';
+import { Syncer, VideoFile } from './types';
 
 /**
  * OffsetSyncer is used to synchronize the video start time of a test case

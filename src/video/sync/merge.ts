@@ -44,19 +44,19 @@ export class MergeSyncer implements Syncer {
     );
 
     const args = [
-      "-f",
-      "concat",
-      "-safe",
-      "0",
-      "-threads",
-      "1",
-      "-y",
-      "-benchmark",
-      "-i",
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-threads',
+      '1',
+      '-y',
+      '-benchmark',
+      '-i',
       inputFile,
       outputFile,
     ];
-    spawnSync("ffmpeg", args);
+    spawnSync('ffmpeg', args);
 
     return outputFile;
   }
