@@ -361,7 +361,7 @@ export default class SauceReporter implements Reporter {
     return str.replace(ansiRegex, '');
   }
 
-  constructSauceSuite(rootSuite: PlaywrightSuite, videoSyncer: Syncer | null) {
+  constructSauceSuite(rootSuite: PlaywrightSuite, videoSyncer?: Syncer) {
     const suite = new SauceSuite(rootSuite.title);
     const assets: Asset[] = [];
 
@@ -473,7 +473,7 @@ ${err.stack}
   }
 
   createSauceReport(rootSuite: PlaywrightSuite) {
-    let syncer: Syncer | null = null;
+    let syncer: Syncer | undefined;
     if (process.env.SAUCE_VIDEO_START_TIME) {
       const offset = new Date(process.env.SAUCE_VIDEO_START_TIME).getTime();
       syncer = new OffsetSyncer(offset);
