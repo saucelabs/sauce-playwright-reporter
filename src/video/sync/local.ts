@@ -3,10 +3,10 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { Syncer, VideoFile } from './sync/types';
+import { Syncer, VideoFile } from './types';
 import { Test } from '@saucelabs/sauce-json-reporter';
 
-export class Timeline implements Syncer {
+export class LocalSyncer implements Syncer {
   duration: number;
   videoFiles: VideoFile[];
 

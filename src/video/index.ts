@@ -1,3 +1,3 @@
-export { Timeline } from './timeline';
 export { Syncer } from './sync/types';
-export { OffsetSyncer } from './sync/offset';
+export { LocalSyncer } from './sync/local';
+export { VMSyncer } from './sync/vm';
