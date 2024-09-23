@@ -80,9 +80,7 @@ describe('runs tests on cloud', function () {
     const assets = response.data;
     expect(assets['console.log']).toBe('console.log');
     expect(assets['sauce-test-report.json']).toBe('sauce-test-report.json');
-    expect(Object.keys(assets).some((key) => key.indexOf('video') != -1)).toBe(
-      true,
-    );
+    expect(assets['video']).toBe('video.mp4');
   });
 
   test('job has name/tags correctly set', async function () {
