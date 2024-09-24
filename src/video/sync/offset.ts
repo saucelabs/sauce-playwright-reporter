@@ -1,14 +1,14 @@
 import { Test } from '@saucelabs/sauce-json-reporter';
-import { Syncer, VideoFile } from './types';
+import { Milliseconds, Syncer, VideoFile } from './types';
 
 /**
  * OffsetSyncer is used to synchronize the video start time of a test case
  * against a simple offset.
  */
 export class OffsetSyncer implements Syncer {
-  private videoOffset: number;
+  private videoOffset: Milliseconds;
 
-  constructor(offset: number) {
+  constructor(offset: Milliseconds) {
     this.videoOffset = offset;
   }
 

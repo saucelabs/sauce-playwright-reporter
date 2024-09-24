@@ -1,6 +1,6 @@
 import { Test } from '@saucelabs/sauce-json-reporter';
 
-type Milliseconds = number;
+export type Milliseconds = number;
 
 /**
  * VideoFile represents a video on disk.

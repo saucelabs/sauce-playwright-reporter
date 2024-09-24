@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { Syncer, VideoFile } from './types';
+import { Milliseconds, Syncer, VideoFile } from './types';
 import { Test } from '@saucelabs/sauce-json-reporter';
 
 /**
@@ -13,7 +13,7 @@ import { Test } from '@saucelabs/sauce-json-reporter';
  * added.
  */
 export class MergeSyncer implements Syncer {
-  duration: number;
+  duration: Milliseconds;
   videoFiles: VideoFile[];
 
   constructor() {
