@@ -24,6 +24,7 @@ import {
   TestRunRequestBody,
 } from './api';
 import { CI, IS_CI } from './ci';
+import { Syncer, MergeSyncer, OffsetSyncer } from './video';
 
 export interface Config {
   buildName?: string;
@@ -33,6 +34,7 @@ export interface Config {
   outputFile?: string;
   upload?: boolean;
   webAssetsDir: string;
+  mergeVideos?: boolean;
 }
 
 // Types of attachments relevant for UI display.
@@ -58,6 +60,7 @@ export default class SauceReporter implements Reporter {
   region: Region;
   outputFile?: string;
   shouldUpload: boolean;
+  mergeVideos: boolean;
   /*
    * When webAssetsDir is set, this reporter syncs web UI-related attachments
    * from the Playwright output directory to the specified web assets directory.
@@ -88,8 +91,6 @@ export default class SauceReporter implements Reporter {
   startedAt?: Date;
   endedAt?: Date;
 
-  videoStartTime?: number;
-
   constructor(reporterConfig: Config) {
     this.projects = {};
 
@@ -99,6 +100,7 @@ export default class SauceReporter implements Reporter {
     this.outputFile =
       reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.shouldUpload = reporterConfig?.upload !== false;
+    this.mergeVideos = reporterConfig?.mergeVideos === true;
 
     this.webAssetsDir =
       reporterConfig.webAssetsDir || process.env.SAUCE_WEB_ASSETS_DIR;
@@ -112,7 +114,7 @@ export default class SauceReporter implements Reporter {
         fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'),
       );
       reporterVersion = packageData.version;
-    } catch (e) {
+    } catch (_e) {
       /* empty */
     }
 
@@ -138,12 +140,6 @@ export default class SauceReporter implements Reporter {
     }
 
     this.playwrightVersion = 'unknown';
-
-    if (process.env.SAUCE_VIDEO_START_TIME) {
-      this.videoStartTime = new Date(
-        process.env.SAUCE_VIDEO_START_TIME,
-      ).getTime();
-    }
   }
 
   onBegin(config: FullConfig, suite: PlaywrightSuite) {
@@ -170,7 +166,7 @@ export default class SauceReporter implements Reporter {
     const jobUrls = [];
     const suites = [];
     for await (const projectSuite of this.rootSuite.suites) {
-      const { report, assets } = this.createSauceReport(projectSuite);
+      const { report, assets } = await this.createSauceReport(projectSuite);
 
       const result = await this.reportToSauce(projectSuite, report, assets);
 
@@ -365,7 +361,7 @@ export default class SauceReporter implements Reporter {
     return str.replace(ansiRegex, '');
   }
 
-  constructSauceSuite(rootSuite: PlaywrightSuite) {
+  constructSauceSuite(rootSuite: PlaywrightSuite, videoSyncer?: Syncer) {
     const suite = new SauceSuite(rootSuite.title);
     const assets: Asset[] = [];
 
@@ -407,10 +403,6 @@ export default class SauceReporter implements Reporter {
         startTime: lastResult.startTime,
         code: new TestCode(lines),
       });
-      if (this.videoStartTime) {
-        test.videoTimestamp =
-          (lastResult.startTime.getTime() - this.videoStartTime) / 1000;
-      }
       if (testCase.id) {
         test.metadata = {
           id: testCase.id,
@@ -445,12 +437,25 @@ export default class SauceReporter implements Reporter {
           });
         }
       }
+
+      if (videoSyncer) {
+        const videoAttachment = lastResult.attachments.find((a) =>
+          a.contentType.includes('video'),
+        );
+        videoSyncer.sync(test, {
+          path: videoAttachment?.path,
+          duration: test.duration,
+        });
+      }
     }
 
     for (const subSuite of rootSuite.suites) {
-      const { suite: s, assets: a } = this.constructSauceSuite(subSuite);
-      suite.addSuite(s);
+      const { suite: s, assets: a } = this.constructSauceSuite(
+        subSuite,
+        videoSyncer,
+      );
 
+      suite.addSuite(s);
       assets.push(...a);
     }
 
@@ -467,8 +472,32 @@ ${err.stack}
     `;
   }
 
-  createSauceReport(rootSuite: PlaywrightSuite) {
-    const { suite: sauceSuite, assets } = this.constructSauceSuite(rootSuite);
+  async createSauceReport(rootSuite: PlaywrightSuite) {
+    let syncer: Syncer | undefined;
+    if (process.env.SAUCE_VIDEO_START_TIME) {
+      const offset = new Date(process.env.SAUCE_VIDEO_START_TIME).getTime();
+      syncer = new OffsetSyncer(offset);
+    } else if (this.mergeVideos) {
+      syncer = new MergeSyncer();
+    }
+
+    const { suite: sauceSuite, assets } = this.constructSauceSuite(
+      rootSuite,
+      syncer,
+    );
+
+    if (syncer instanceof MergeSyncer) {
+      const { kind, value } = await syncer.mergeVideos();
+      if (kind === 'ok') {
+        assets.push({
+          filename: 'video.mp4',
+          path: value,
+          data: fs.createReadStream(value),
+        });
+      } else if (kind === 'err') {
+        console.error('Failed to merge video:', value.message);
+      }
+    }
 
     const report = new TestRun();
     report.addSuite(sauceSuite);

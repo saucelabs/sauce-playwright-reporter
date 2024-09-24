@@ -9,6 +9,7 @@ const config: PlaywrightTestConfig = {
         buildName: 'Playwright Integration Tests',
         tags: ['playwright', 'demo', 'e2e'],
         outputFile: 'sauce-test-report.json',
+        mergeVideos: true,
       },
     ],
     ['line'],
