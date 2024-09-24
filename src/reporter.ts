@@ -166,7 +166,7 @@ export default class SauceReporter implements Reporter {
     const jobUrls = [];
     const suites = [];
     for await (const projectSuite of this.rootSuite.suites) {
-      const { report, assets } = this.createSauceReport(projectSuite);
+      const { report, assets } = await this.createSauceReport(projectSuite);
 
       const result = await this.reportToSauce(projectSuite, report, assets);
 
@@ -472,7 +472,7 @@ ${err.stack}
     `;
   }
 
-  createSauceReport(rootSuite: PlaywrightSuite) {
+  async createSauceReport(rootSuite: PlaywrightSuite) {
     let syncer: Syncer | undefined;
     if (process.env.SAUCE_VIDEO_START_TIME) {
       const offset = new Date(process.env.SAUCE_VIDEO_START_TIME).getTime();
@@ -487,7 +487,7 @@ ${err.stack}
     );
 
     if (syncer instanceof MergeSyncer) {
-      const mergedVideo = syncer.mergeVideos();
+      const mergedVideo = await syncer.mergeVideos();
       if (mergedVideo) {
         assets.push({
           filename: 'video.mp4',
