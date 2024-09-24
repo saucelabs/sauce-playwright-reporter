@@ -11,12 +11,10 @@ import { Milliseconds, Syncer, VideoFile } from './types';
 
 const exec = promisify(child_process.exec);
 
-
 type Result<T, E> =
-  | { kind: 'ok', value: T }
-  | { kind: 'noop', value: null }
-  | { kind: 'err', value: E };
-
+  | { kind: 'ok'; value: T }
+  | { kind: 'noop'; value: null }
+  | { kind: 'err'; value: E };
 
 /**
  * MergeSyncer is used to synchronize the video start time of a test case with
@@ -47,7 +45,8 @@ export class MergeSyncer implements Syncer {
       return { kind: 'noop', value: null };
     }
 
-    const hasFFMpeg = child_process.spawnSync('ffmpeg', ['-version']).status === 0;
+    const hasFFMpeg =
+      child_process.spawnSync('ffmpeg', ['-version']).status === 0;
     if (!hasFFMpeg) {
       const e = new Error(
         'ffmpeg could not be found. Ensure ffmpeg is available in your PATH',
