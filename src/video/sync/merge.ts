@@ -11,7 +11,7 @@ import { Milliseconds, Syncer, VideoFile } from './types';
 
 const exec = promisify(child_process.exec);
 
-type Result<T, E> =
+type MergeResult<T, E> =
   | { kind: 'ok'; value: T }
   | { kind: 'noop'; value: null }
   | { kind: 'err'; value: E };
@@ -40,7 +40,7 @@ export class MergeSyncer implements Syncer {
     }
   }
 
-  public async mergeVideos(): Promise<Result<string, Error>> {
+  public async mergeVideos(): Promise<MergeResult<string, Error>> {
     if (this.videoFiles.length === 0) {
       return { kind: 'noop', value: null };
     }
