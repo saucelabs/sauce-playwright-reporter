@@ -11,6 +11,13 @@ import { Milliseconds, Syncer, VideoFile } from './types';
 
 const exec = promisify(child_process.exec);
 
+
+type Result<T, E> =
+  | { kind: 'ok', value: T }
+  | { kind: 'noop', value: null }
+  | { kind: 'err', value: E };
+
+
 /**
  * MergeSyncer is used to synchronize the video start time of a test case with
  * a collection of video files. Videos are aggregated and their cumulative
@@ -35,61 +42,70 @@ export class MergeSyncer implements Syncer {
     }
   }
 
-  public async mergeVideos() {
+  public async mergeVideos(): Promise<Result<string, Error>> {
     if (this.videoFiles.length === 0) {
-      return;
+      return { kind: 'noop', value: null };
     }
+
     const hasFFMpeg = child_process.spawnSync('ffmpeg', ['-version']).status === 0;
     if (!hasFFMpeg) {
-      console.error(
-        `Failed to merge videos: ffmpeg could not be found. \
-Ensure ffmpeg is available in your PATH`,
+      const e = new Error(
+        'ffmpeg could not be found. Ensure ffmpeg is available in your PATH',
       );
-      return;
+      return { kind: 'err', value: e };
     }
 
     let tmpDir: string;
     try {
       tmpDir = await mkdtemp(join(tmpdir(), 'pw-sauce-video-'));
+      process.on('exit', () => {
+        // NOTE: exit handler must be synchronous
+        rmSync(tmpDir, { recursive: true, force: true });
+      });
     } catch (e) {
-      console.error(`Failed to merge videos: could not create temp dir`, e);
-      return;
+      const error = e as Error;
+      return { kind: 'err', value: error };
     }
 
     const inputFile = join(tmpDir, 'videos.txt');
-    let outputFile: string | undefined = join(tmpDir, 'video.mp4');
+    const outputFile = join(tmpDir, 'video.mp4');
 
     try {
       await writeFile(
         inputFile,
         this.videoFiles.map((v) => `file '${v.path}'`).join('\n'),
       );
-
-      const args = [
-        '-f',
-        'concat',
-        '-safe',
-        '0',
-        '-threads',
-        '1',
-        '-y',
-        '-i',
-        inputFile,
-        outputFile,
-      ];
-      await exec(['ffmpeg', ...args].join(' '));
     } catch (e) {
-      const error = e as Error;
-      console.error('\nFailed to merge videos:', error.message);
-
-      outputFile = undefined;
-    } finally {
-      process.on('exit', () => {
-        // NOTE: exit handler must be synchronous
-        rmSync(tmpDir, { recursive: true, force: true });
-      });
+      return { kind: 'err', value: e as Error };
     }
 
-    return outputFile;
+    const args = [
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-threads',
+      '1',
+      '-y',
+      '-i',
+      inputFile,
+      outputFile,
+    ];
+    const cmd = ['ffmpeg', ...args].join(' ');
+    try {
+      await exec(cmd);
+    } catch (e) {
+      const error = e as Error;
+      let msg = `ffmpeg command: ${cmd}`;
+      if ('stdout' in error) {
+        msg = `${msg}\nstdout: ${error.stdout}`;
+      }
+      if ('stderr' in error) {
+        msg = `${msg}\nstderr: ${error.stderr}`;
+      }
+      return { kind: 'err', value: new Error(msg) };
+    }
+
+    return { kind: 'ok', value: outputFile };
   }
 }

@@ -487,13 +487,15 @@ ${err.stack}
     );
 
     if (syncer instanceof MergeSyncer) {
-      const mergedVideo = await syncer.mergeVideos();
-      if (mergedVideo) {
+      const { kind, value } = await syncer.mergeVideos();
+      if (kind === 'ok') {
         assets.push({
           filename: 'video.mp4',
-          path: mergedVideo,
-          data: fs.createReadStream(mergedVideo),
+          path: value,
+          data: fs.createReadStream(value),
         });
+      } else if (kind === 'err') {
+        console.error('Failed to merge video:', value.message);
       }
     }
 
