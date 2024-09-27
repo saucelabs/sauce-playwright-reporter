@@ -143,7 +143,7 @@ export default class SauceReporter implements Reporter {
     } catch (_e) {
       /* empty */
     }
- 
+
     const { username, accessKey } = getCredentials();
     this.api = new TestComposer({
       region: this.region,
