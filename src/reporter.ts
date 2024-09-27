@@ -110,9 +110,7 @@ export default class SauceReporter implements Reporter {
   constructor(reporterConfig: Config) {
     this.shouldUpload = reporterConfig?.upload !== false;
     if (!hasCredentials() && this.shouldUpload) {
-      throw new Error(
-        'Credentials not set! Please verify SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables.',
-      );
+      console.warn(`Credentials not set! Verify SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables.`);
     }
 
     this.projects = {};
@@ -122,6 +120,7 @@ export default class SauceReporter implements Reporter {
     this.outputFile =
       reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
     this.mergeVideos = reporterConfig?.mergeVideos === true;
+    this.playwrightVersion = 'unknown';
 
     this.webAssetsDir =
       reporterConfig.webAssetsDir || process.env.SAUCE_WEB_ASSETS_DIR;
@@ -139,6 +138,10 @@ export default class SauceReporter implements Reporter {
       /* empty */
     }
 
+    if (!hasCredentials() || !this.shouldUpload) {
+      return;
+    }
+
     const { username, accessKey } = getCredentials();
     this.api = new TestComposer({
       region: this.region,
@@ -153,8 +156,6 @@ export default class SauceReporter implements Reporter {
       username,
       accessKey,
     });
-
-    this.playwrightVersion = 'unknown';
   }
 
   onBegin(config: FullConfig, suite: PlaywrightSuite) {
@@ -183,24 +184,22 @@ export default class SauceReporter implements Reporter {
     for await (const projectSuite of this.rootSuite.suites) {
       const { report, assets } = await this.createSauceReport(projectSuite);
 
-      const result = await this.reportToSauce(projectSuite, report, assets);
+      suites.push(...report.suites);
 
+      if (this.isWebAssetSyncEnabled()) {
+        this.syncAssets(assets);
+      }
+
+      if (!hasCredentials() || !this.shouldUpload) {
+        continue;
+      }
+
+      const result = await this.reportToSauce(projectSuite, report, assets);
       if (result?.id) {
         jobUrls.push({
           url: result.url,
           name: projectSuite.title,
         });
-        try {
-          await this.reportTestRun(projectSuite, report, result?.id);
-        } catch (e: any) {
-          console.warn('failed to send report to insights: ', e);
-        }
-      }
-
-      suites.push(...report.suites);
-
-      if (this.isWebAssetSyncEnabled()) {
-        this.syncAssets(assets);
       }
     }
 
@@ -248,7 +247,11 @@ export default class SauceReporter implements Reporter {
       };
     }
 
-    await this.testRunsApi?.create([req]);
+    try {
+      await this.testRunsApi?.create([req]);
+    } catch (e: any) {
+      console.warn('failed to send report to insights: ', e);
+    }
   }
 
   getDuration(projectSuite: PlaywrightSuite) {
@@ -295,16 +298,11 @@ export default class SauceReporter implements Reporter {
   }
 
   displayReportedJobs(jobs: { name: string; url: string }[]) {
-    if (jobs.length < 1) {
-      let msg = '';
-      if (!hasCredentials() && this.shouldUpload) {
-        msg = `\nNo results reported to Sauce. $SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.`;
-      }
-      console.log(msg);
+    if (!hasCredentials() && this.shouldUpload) {
+      console.warn(`\nNo results reported to Sauce Labs. SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.`);
       console.log();
       return;
     }
-
     console.log(`\nReported jobs to Sauce Labs:`);
     for (const job of jobs) {
       console.log(`  - ${job.name}: ${job.url}`);
@@ -539,25 +537,24 @@ ${err.stack}
     const browserVersion = '1.0';
     const browserName = this.getBrowserName(projectSuite);
 
-    if (this.shouldUpload) {
-      const resp = await this.api?.createReport({
-        name: projectSuite.title,
-        browserName: `playwright-${browserName}`,
-        browserVersion,
-        platformName: this.getPlatformName(),
-        framework: 'playwright',
-        frameworkVersion: this.playwrightVersion,
-        passed: didSuitePass,
-        startTime: this.startedAt?.toISOString() ?? new Date().toISOString(),
-        endTime: this.endedAt?.toISOString() ?? new Date().toISOString(),
-        build: this.buildName,
-        tags: this.tags,
-      });
-      if (resp?.id) {
-        await this.uploadAssets(resp.id, consoleLog, report, assets);
-      }
-      return resp;
+    const resp = await this.api?.createReport({
+      name: projectSuite.title,
+      browserName: `playwright-${browserName}`,
+      browserVersion,
+      platformName: this.getPlatformName(),
+      framework: 'playwright',
+      frameworkVersion: this.playwrightVersion,
+      passed: didSuitePass,
+      startTime: this.startedAt?.toISOString() ?? new Date().toISOString(),
+      endTime: this.endedAt?.toISOString() ?? new Date().toISOString(),
+      build: this.buildName,
+      tags: this.tags,
+    });
+    if (resp?.id) {
+      await this.uploadAssets(resp.id, consoleLog, report, assets);
+      await this.reportTestRun(projectSuite, report, resp.id);
     }
+    return resp;
   }
 
   async uploadAssets(

@@ -14,7 +14,7 @@ describe('runs tests on cloud', function () {
   beforeAll(async function () {
     if (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY) {
       throw new Error(
-        'Please set SAUCE_USERNAME and SAUCE_ACCESS_KEY env variables',
+        'Please set SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables',
       );
     }
 
