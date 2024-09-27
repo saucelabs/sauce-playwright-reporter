@@ -130,6 +130,10 @@ export default class SauceReporter implements Reporter {
       fs.mkdirSync(this.webAssetsDir, { recursive: true });
     }
 
+    if (!hasCredentials() || !this.shouldUpload) {
+      return;
+    }
+
     let reporterVersion = 'unknown';
     try {
       const packageData = JSON.parse(
@@ -139,11 +143,7 @@ export default class SauceReporter implements Reporter {
     } catch (_e) {
       /* empty */
     }
-
-    if (!hasCredentials() || !this.shouldUpload) {
-      return;
-    }
-
+ 
     const { username, accessKey } = getCredentials();
     this.api = new TestComposer({
       region: this.region,
