@@ -37,6 +37,11 @@ export interface Config {
   mergeVideos?: boolean;
 }
 
+export interface Credentials {
+  username: string;
+  accessKey: string;
+}
+
 // Types of attachments relevant for UI display.
 const webAssetsTypes = [
   '.log',
@@ -51,6 +56,17 @@ const webAssetsTypes = [
   '.gif',
   '.svg',
 ];
+
+const hasCredentials = function () {
+  return process.env.SAUCE_USERNAME && process.env.SAUCE_ACCESS_KEY;
+};
+
+const getCredentials = function (): Credentials {
+  return {
+    username: process.env.SAUCE_USERNAME,
+    accessKey: process.env.SAUCE_ACCESS_KEY,
+  } as Credentials;
+};
 
 export default class SauceReporter implements Reporter {
   projects: { [k: string]: any };
@@ -92,14 +108,19 @@ export default class SauceReporter implements Reporter {
   endedAt?: Date;
 
   constructor(reporterConfig: Config) {
-    this.projects = {};
+    this.shouldUpload = reporterConfig?.upload !== false;
+    if (!hasCredentials() && this.shouldUpload) {
+      throw new Error(
+        'Credentials not set! Please verify SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables.',
+      );
+    }
 
+    this.projects = {};
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
     this.region = reporterConfig?.region || 'us-west-1';
     this.outputFile =
       reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
-    this.shouldUpload = reporterConfig?.upload !== false;
     this.mergeVideos = reporterConfig?.mergeVideos === true;
 
     this.webAssetsDir =
@@ -118,26 +139,20 @@ export default class SauceReporter implements Reporter {
       /* empty */
     }
 
-    if (
-      process.env.SAUCE_USERNAME &&
-      process.env.SAUCE_USERNAME !== '' &&
-      process.env.SAUCE_ACCESS_KEY &&
-      process.env.SAUCE_ACCESS_KEY !== ''
-    ) {
-      this.api = new TestComposer({
-        region: this.region,
-        username: process.env.SAUCE_USERNAME,
-        accessKey: process.env.SAUCE_ACCESS_KEY,
-        headers: {
-          'User-Agent': `playwright-reporter/${reporterVersion}`,
-        },
-      });
-      this.testRunsApi = new TestRunsApi({
-        region: this.region,
-        username: process.env.SAUCE_USERNAME,
-        accessKey: process.env.SAUCE_ACCESS_KEY,
-      });
-    }
+    const { username, accessKey } = getCredentials();
+    this.api = new TestComposer({
+      region: this.region,
+      username,
+      accessKey,
+      headers: {
+        'User-Agent': `playwright-reporter/${reporterVersion}`,
+      },
+    });
+    this.testRunsApi = new TestRunsApi({
+      region: this.region,
+      username,
+      accessKey,
+    });
 
     this.playwrightVersion = 'unknown';
   }
@@ -282,12 +297,7 @@ export default class SauceReporter implements Reporter {
   displayReportedJobs(jobs: { name: string; url: string }[]) {
     if (jobs.length < 1) {
       let msg = '';
-      const hasCredentials =
-        process.env.SAUCE_USERNAME &&
-        process.env.SAUCE_USERNAME !== '' &&
-        process.env.SAUCE_ACCESS_KEY &&
-        process.env.SAUCE_ACCESS_KEY !== '';
-      if (hasCredentials && this.shouldUpload) {
+      if (!hasCredentials() && this.shouldUpload) {
         msg = `\nNo results reported to Sauce. $SAUCE_USERNAME and $SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.`;
       }
       console.log(msg);
