@@ -110,7 +110,9 @@ export default class SauceReporter implements Reporter {
   constructor(reporterConfig: Config) {
     this.shouldUpload = reporterConfig?.upload !== false;
     if (!hasCredentials() && this.shouldUpload) {
-      console.warn(`Credentials not set! Verify SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables.`);
+      console.warn(
+        `Credentials not set! Verify SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables.`,
+      );
     }
 
     this.projects = {};
@@ -299,7 +301,9 @@ export default class SauceReporter implements Reporter {
 
   displayReportedJobs(jobs: { name: string; url: string }[]) {
     if (!hasCredentials() && this.shouldUpload) {
-      console.warn(`\nNo results reported to Sauce Labs. SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.`);
+      console.warn(
+        `\nNo results reported to Sauce Labs. SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables must be defined in order for reports to be uploaded to Sauce.`,
+      );
       console.log();
       return;
     }
