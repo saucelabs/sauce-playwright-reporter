@@ -108,19 +108,13 @@ export default class SauceReporter implements Reporter {
   endedAt?: Date;
 
   constructor(reporterConfig: Config) {
-    this.shouldUpload = reporterConfig?.upload !== false;
-    if (!hasCredentials() && this.shouldUpload) {
-      console.warn(
-        `Credentials not set! Verify SAUCE_USERNAME and SAUCE_ACCESS_KEY environment variables.`,
-      );
-    }
-
     this.projects = {};
     this.buildName = reporterConfig?.buildName || '';
     this.tags = reporterConfig?.tags || [];
     this.region = reporterConfig?.region || 'us-west-1';
     this.outputFile =
       reporterConfig?.outputFile || process.env.SAUCE_REPORT_OUTPUT_NAME;
+    this.shouldUpload = reporterConfig?.upload !== false;
     this.mergeVideos = reporterConfig?.mergeVideos === true;
     this.playwrightVersion = 'unknown';
 
