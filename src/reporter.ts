@@ -301,6 +301,9 @@ export default class SauceReporter implements Reporter {
       console.log();
       return;
     }
+    if (jobs.length < 1) {
+      return;
+    }
     console.log(`\nReported jobs to Sauce Labs:`);
     for (const job of jobs) {
       console.log(`  - ${job.name}: ${job.url}`);
