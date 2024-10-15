@@ -292,7 +292,7 @@ export default class SauceReporter implements Reporter {
   }
 
   /**
-   * Gets the browser name and version for the given Playwright suite.
+   * Gets the browser info for the given Playwright suite.
    *
    * - Uses `userAgent` if available, otherwise defaults to the `browserName`
    *   from the test config or uses preset defaults.
