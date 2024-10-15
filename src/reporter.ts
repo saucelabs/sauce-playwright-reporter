@@ -299,6 +299,9 @@ export default class SauceReporter implements Reporter {
       this.projects[projectSuite.title] ||
       this.projects[Object.keys(this.projects)[0]];
 
+    // UA is available only with specified browsers from Playwright's device list.
+    // See: https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/deviceDescriptorsSource.json
+    // Without using the browsers from Playwright's device list, the browser name and version may be unknown.
     if (!projectConfig?.use?.userAgent) {
       return {
         // If no userAgent is available, fallback to browserName from testOptions or default browserName.
