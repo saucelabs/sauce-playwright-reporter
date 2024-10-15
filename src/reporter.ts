@@ -17,6 +17,7 @@ import {
 } from '@playwright/test/reporter';
 
 import { Asset, Region, TestComposer } from '@saucelabs/testcomposer';
+import { UAParser } from 'ua-parser-js';
 import { getLines } from './code';
 import {
   TestRuns as TestRunsApi,
@@ -41,6 +42,14 @@ export interface Credentials {
   username: string;
   accessKey: string;
 }
+
+interface Browser {
+  name: string;
+  version: string;
+}
+
+const DEFAULT_BROWSER_NAME = 'chromium';
+const DEFAULT_BROWSER_VERSION = '1.0';
 
 // Types of attachments relevant for UI display.
 const webAssetsTypes = [
@@ -229,7 +238,7 @@ export default class SauceReporter implements Reporter {
         id: jobId,
         name: projectSuite.title,
       },
-      browser: `playwright-${this.getBrowserName(projectSuite)}`,
+      browser: `playwright-${this.getBrowser(projectSuite).name}`,
       tags: this.tags,
       build_name: this.buildName,
       os: this.getPlatformName(),
@@ -282,7 +291,19 @@ export default class SauceReporter implements Reporter {
     return errors;
   }
 
-  getBrowserName(projectSuite: PlaywrightSuite) {
+  /**
+   * Gets the browser info for the given Playwright suite.
+   *
+   * - Uses `userAgent` if available, otherwise defaults to the `browserName`
+   *   from the test config or uses preset defaults.
+   * - The `userAgent` is only available with specific browsers from Playwright's
+   *   device list. Without it, browser details may fall back to defaults.
+   *
+   * Refs:
+   * - https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/deviceDescriptorsSource.json
+   * - https://playwright.dev/docs/api/class-testoptions#test-options-browser-name
+   */
+  getBrowser(projectSuite: PlaywrightSuite): Browser {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
     const projectConfig =
@@ -290,7 +311,19 @@ export default class SauceReporter implements Reporter {
       this.projects[projectSuite.title] ||
       this.projects[Object.keys(this.projects)[0]];
 
-    return (projectConfig?.use?.browserName as string) ?? 'chromium';
+    if (!projectConfig?.use?.userAgent) {
+      return {
+        name: projectConfig?.use?.browserName || DEFAULT_BROWSER_NAME,
+        version: DEFAULT_BROWSER_VERSION,
+      };
+    }
+
+    const parser = new UAParser(projectConfig.use.userAgent);
+    const { name, version } = parser.getBrowser();
+    return {
+      name: name || DEFAULT_BROWSER_NAME,
+      version: version || DEFAULT_BROWSER_VERSION,
+    };
   }
 
   displayReportedJobs(jobs: { name: string; url: string }[]) {
@@ -535,10 +568,8 @@ ${err.stack}
   ): Promise<{ id: string; url: string } | undefined> {
     const consoleLog = this.constructLogFile(projectSuite);
     const didSuitePass = report.computeStatus() === Status.Passed;
-
-    // Currently no reliable way to get the browser version
-    const browserVersion = '1.0';
-    const browserName = this.getBrowserName(projectSuite);
+    const { name: browserName, version: browserVersion } =
+      this.getBrowser(projectSuite);
 
     const resp = await this.api?.createReport({
       name: projectSuite.title,
