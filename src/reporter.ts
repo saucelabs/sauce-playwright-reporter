@@ -291,6 +291,18 @@ export default class SauceReporter implements Reporter {
     return errors;
   }
 
+  /**
+   * Gets the browser name and version for the given Playwright suite.
+   *
+   * - Uses `userAgent` if available, otherwise defaults to the `browserName`
+   *   from the test config or uses preset defaults.
+   * - The `userAgent` is only available with specific browsers from Playwright's
+   *   device list. Without it, browser details may fall back to defaults.
+   *
+   * Refs:
+   * - https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/deviceDescriptorsSource.json
+   * - https://playwright.dev/docs/api/class-testoptions#test-options-browser-name
+   */
   getBrowser(projectSuite: PlaywrightSuite): Browser {
     // Select project configuration and default to first available project.
     // Playwright version >= 1.16.3 will contain the project config directly.
@@ -299,13 +311,8 @@ export default class SauceReporter implements Reporter {
       this.projects[projectSuite.title] ||
       this.projects[Object.keys(this.projects)[0]];
 
-    // UA is available only with specified browsers from Playwright's device list.
-    // See: https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/server/deviceDescriptorsSource.json
-    // Without using the browsers from Playwright's device list, the browser name and version may be unknown.
     if (!projectConfig?.use?.userAgent) {
       return {
-        // If no userAgent is available, fallback to browserName from testOptions or default browserName.
-        // Ref: https://playwright.dev/docs/api/class-testoptions#test-options-browser-name
         name: projectConfig?.use?.browserName || DEFAULT_BROWSER_NAME,
         version: DEFAULT_BROWSER_VERSION,
       };
