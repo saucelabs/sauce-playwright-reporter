@@ -75,7 +75,7 @@ Some limitations apply to `@saucelabs/playwright-reporter`:
 
 ### Setup
 
-1. Install dependencies: `npm install`
+1. Install dependencies: `npm ci`
 2. Setup git hooks: `npm run prepare`. This setups pre-commit hooks to format
    and lint staged code.
 3. Build: `npm run build`
