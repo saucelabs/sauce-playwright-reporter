@@ -73,7 +73,14 @@ Some limitations apply to `@saucelabs/playwright-reporter`:
 
 ## Development
 
-### Running integration tests
+### Setup
+
+1. Install dependencies: `npm install`
+2. Setup git hooks: `npm run prepare`. This setups pre-commit hooks to format
+   and lint staged code.
+3. Build: `npm run build`
+
+### Running Locally
 
 There are tests included in `tests/integration` where the reporter is referenced
 directly.
@@ -84,22 +91,28 @@ $ cd tests/integration
 $ npx playwright test
 ```
 
-### Running Locally
-
-If you have playwright tests outside of the repo, you can link and install the
+If you have playwright tests outside of the repo, you can use
+[npm link](https://docs.npmjs.com/cli/v11/commands/npm-link) to install the
 reporter to run in your external repo.
 
 ```sh
-$ npm run build
-$ npm link
 $ npm link @saucelabs/playwright-reporter
 $ npx playwright test --reporter=@saucelabs/playwright-reporter
 ```
 
 ### Debug
 
-After linking with `npm link`, you can run your Playwright tests with the environment variable `DEBUG="@saucelabs/playwright-reporter:*"` to see additional debug output.
+You can run your Playwright tests with the environment variable
+`DEBUG="@saucelabs/playwright-reporter:*"` to see additional debug output.
 
 ```sh
 $ DEBUG="@saucelabs/playwright-reporter:*" npx playwright test --reporter=@saucelabs/playwright-reporter
 ```
+
+## Releasing
+
+New versions are released with a manual GitHub Actions workflow.
+
+1. Go to https://github.com/saucelabs/sauce-cypress-plugin/actions/workflows/release.yml
+2. Run the workflow and specify the branch and release type (`major`, `minor`,
+   or `patch`).
