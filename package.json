@@ -43,23 +43,21 @@
     "ua-parser-js": "^1.0.39"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.1",
+    "@eslint/js": "^9.19.0",
     "@playwright/test": "1.46.1",
     "@tsconfig/node22": "^22.0.0",
     "@types/debug": "^4.1.12",
+    "@types/eslint__js": "^8.42.3",
     "@types/ua-parser-js": "^0.7.39",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-jest": "^28.8.1",
-    "eslint-plugin-prettier": "^5.2.1",
+    "eslint": "^9.19.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-jest": "^28.11.0",
     "husky": "^9.1.5",
     "jest": "^29.7.0",
     "prettier": "3.4.2",
     "release-it": "^17.6.0",
     "typescript": "^5.5.4",
-    "typescript-eslint": "^7.18.0"
+    "typescript-eslint": "^8.23.0"
   },
   "peerDependencies": {
     "@playwright/test": "^1.16.3"
