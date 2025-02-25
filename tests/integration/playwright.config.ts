@@ -34,6 +34,10 @@ const config: PlaywrightTestConfig = {
       name: 'Failing Suites',
       testMatch: 'tests/failing.test.js',
     },
+    {
+      name: 'Annotation tests',
+      testMatch: 'tests/annotation.test.ts',
+    },
   ],
 };
 
