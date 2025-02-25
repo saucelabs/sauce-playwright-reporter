@@ -433,6 +433,16 @@ export default class SauceReporter implements Reporter {
 
       const lines = getLines(testCase);
 
+      const metadata: Record<string, unknown> = {};
+      if (testCase.id) {
+        metadata.id = testCase.id;
+      }
+      if (testCase.tags.length > 0) {
+        metadata.tags = testCase.tags;
+      }
+      if (testCase.annotations.length > 0) {
+        metadata.annotations = testCase.annotations;
+      }
       const isSkipped = testCase.outcome() === 'skipped';
       const test = suite.withTest(testCase.title, {
         status: isSkipped
@@ -446,12 +456,8 @@ export default class SauceReporter implements Reporter {
           : undefined,
         startTime: lastResult.startTime,
         code: new TestCode(lines),
+        metadata,
       });
-      if (testCase.id) {
-        test.metadata = {
-          id: testCase.id,
-        };
-      }
 
       for (const attachment of lastResult.attachments) {
         if (!attachment.path && !attachment.body) {
