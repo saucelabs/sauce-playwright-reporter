@@ -117,6 +117,6 @@ $ DEBUG="@saucelabs/playwright-reporter:*" npx playwright test --reporter=@sauce
 
 New versions are released with a manual GitHub Actions workflow.
 
-1. Go to https://github.com/saucelabs/sauce-cypress-plugin/actions/workflows/release.yml
+1. Go to https://github.com/saucelabs/sauce-playwright-reporter/actions/workflows/release.yml
 2. Run the workflow and specify the branch and release type (`major`, `minor`,
    or `patch`).
