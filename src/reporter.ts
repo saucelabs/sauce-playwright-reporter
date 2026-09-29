@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -65,6 +66,14 @@ const webAssetsTypes = [
   '.gif',
   '.svg',
 ];
+
+// Characters that are invalid in file names on some platforms (e.g. Windows)
+// or that break the unencoded asset URLs built by the Sauce Labs web UI.
+// eslint-disable-next-line no-control-regex
+const unsafeAssetNameChars = /[/\\:*?"<>|#%\x00-\x1f]/g;
+
+// Most file systems (NTFS, ext4, APFS) limit a file name to 255 bytes.
+const maxAssetNameBytes = 255;
 
 const hasCredentials = function () {
   return process.env.SAUCE_USERNAME && process.env.SAUCE_ACCESS_KEY;
@@ -186,36 +195,59 @@ export default class SauceReporter implements Reporter {
 
     const jobUrls = [];
     const suites = [];
-    for await (const projectSuite of this.rootSuite.suites) {
-      const { report, assets } = await this.createSauceReport(projectSuite);
+    const errors: unknown[] = [];
+    try {
+      for await (const projectSuite of this.rootSuite.suites) {
+        try {
+          const { report, assets } = await this.createSauceReport(projectSuite);
 
-      suites.push(...report.suites);
+          suites.push(...report.suites);
 
-      if (this.isWebAssetSyncEnabled()) {
-        this.syncAssets(assets);
+          if (this.isWebAssetSyncEnabled()) {
+            const failed = this.syncAssets(assets);
+            // Keep the report in line with the assets that actually exist.
+            this.removeAttachments(report.suites, failed);
+          }
+
+          if (!hasCredentials() || !this.shouldUpload) {
+            continue;
+          }
+
+          const result = await this.reportToSauce(projectSuite, report, assets);
+          if (result?.id) {
+            jobUrls.push({
+              url: result.url,
+              name: projectSuite.title,
+            });
+          }
+        } catch (e) {
+          console.error(
+            `Failed to process project "${projectSuite.title}":`,
+            e,
+          );
+          errors.push(e);
+        }
       }
+    } finally {
+      // Always write the report, so a single failure doesn't lose the results
+      // of every test.
+      this.displayReportedJobs(jobUrls);
 
-      if (!hasCredentials() || !this.shouldUpload) {
-        continue;
-      }
-
-      const result = await this.reportToSauce(projectSuite, report, assets);
-      if (result?.id) {
-        jobUrls.push({
-          url: result.url,
-          name: projectSuite.title,
-        });
+      if (this.outputFile) {
+        const report = new TestRun();
+        for (const s of suites) {
+          report.addSuite(s);
+        }
+        this.reportToFile(report);
       }
     }
 
-    this.displayReportedJobs(jobUrls);
-
-    if (this.outputFile) {
-      const report = new TestRun();
-      for (const s of suites) {
-        report.addSuite(s);
-      }
-      this.reportToFile(report);
+    // Surface unexpected errors to Playwright once the report is written.
+    if (errors.length === 1) {
+      throw errors[0];
+    }
+    if (errors.length > 1) {
+      throw new AggregateError(errors, 'Failed to process projects');
     }
   }
 
@@ -464,6 +496,15 @@ export default class SauceReporter implements Reporter {
           break;
         }
 
+        // The file may have been removed before the run ended. Skip it rather
+        // than reference a missing asset or crash while reading it.
+        if (attachment.path && !fs.existsSync(attachment.path)) {
+          console.warn(
+            `Skipping attachment "${attachment.name}": file not found at ${attachment.path}`,
+          );
+          continue;
+        }
+
         const filename = this.resolveAssetName(
           test.name,
           path.basename(attachment.path || ''),
@@ -662,6 +703,11 @@ ${err.stack}
    *
    * @param {string} testName The name of the test associated with the asset.
    * @param {string} filename The original filename of the asset.
+   * The name is made safe for file systems and asset URLs: unsafe characters
+   * are replaced and the name is shortened to fit in 255 bytes. Whenever the
+   * name has to be altered, a short hash of the original is added to keep it
+   * unique.
+   *
    * @returns {string} The resolved asset name, prefixed with the test name if all conditions are met;
    * otherwise, returns the original filename.
    */
@@ -673,18 +719,86 @@ ${err.stack}
     ) {
       return filename;
     }
-    return `${testName}-${filename}`;
+
+    const prefix = testName.replace(unsafeAssetNameChars, '_');
+    const file = filename.replace(unsafeAssetNameChars, '_');
+    const name = `${prefix}-${file}`;
+    if (
+      prefix === testName &&
+      file === filename &&
+      Buffer.byteLength(name) <= maxAssetNameBytes
+    ) {
+      return name;
+    }
+
+    const hash = crypto
+      .createHash('sha1')
+      .update(`${testName}\0${filename}`)
+      .digest('hex')
+      .slice(0, 8);
+    const separator = `_${hash}-`;
+
+    const prefixBudget =
+      maxAssetNameBytes -
+      Buffer.byteLength(separator) -
+      Buffer.byteLength(file);
+    if (prefixBudget >= 0) {
+      return `${truncateBytes(prefix, prefixBudget)}${separator}${file}`;
+    }
+
+    // The file name alone is too long: drop the prefix and shorten the stem.
+    const ext = path.extname(file);
+    const stemBudget =
+      maxAssetNameBytes - Buffer.byteLength(separator) - Buffer.byteLength(ext);
+    return `${separator}${truncateBytes(path.basename(file, ext), stemBudget)}${ext}`;
   }
 
   // Copy Playwright-generated assets to webAssetsDir.
-  syncAssets(assets: Asset[]) {
+  // Returns the names of the assets that could not be copied.
+  syncAssets(assets: Asset[]): Set<string> {
+    const failed = new Set<string>();
     assets.forEach((asset) => {
       if (this.isWebAsset(asset.filename) && asset.path) {
-        fs.copyFileSync(
-          asset.path,
-          path.join(this.webAssetsDir || '', asset.filename),
-        );
+        try {
+          fs.copyFileSync(
+            asset.path,
+            path.join(this.webAssetsDir || '', asset.filename),
+          );
+        } catch (e) {
+          console.error(`Failed to sync asset "${asset.filename}":`, e);
+          failed.add(asset.filename);
+        }
       }
     });
+    return failed;
   }
+
+  // Remove attachments with the given paths from all tests in the suites.
+  removeAttachments(suites: SauceSuite[], paths: Set<string>) {
+    if (paths.size === 0) {
+      return;
+    }
+    for (const suite of suites) {
+      for (const test of suite.tests) {
+        test.attachments = test.attachments?.filter((a) => !paths.has(a.path));
+      }
+      this.removeAttachments(suite.suites, paths);
+    }
+  }
+}
+
+// Truncate a string to at most maxBytes UTF-8 bytes without splitting a
+// character.
+function truncateBytes(str: string, maxBytes: number): string {
+  let result = '';
+  let bytes = 0;
+  for (const char of str) {
+    const size = Buffer.byteLength(char);
+    if (bytes + size > maxBytes) {
+      break;
+    }
+    result += char;
+    bytes += size;
+  }
+  return result;
 }

@@ -1,4 +1,8 @@
 {
-  "testMatch": ["<rootDir>/tests/integration/playwright.spec.js"],
+  "testMatch": [
+    "<rootDir>/tests/integration/playwright.spec.js",
+    "<rootDir>/tests/integration/web-assets.spec.js",
+    "<rootDir>/tests/unit/**/*.spec.js"
+  ],
   "testTimeout": 180000
 }
