@@ -85,7 +85,7 @@ export class TestRuns {
       await this.api.post<void>('/test-runs/v1/', {
         test_runs: testRuns,
       });
-    } catch (e: any) {
+    } catch (e) {
       if (axios.isAxiosError(e)) {
         let data;
         switch (e.response?.status) {

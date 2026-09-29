@@ -17,7 +17,13 @@ export function getLines(testCase: TestCase) {
     .map((step) => step.location?.line)
     .filter((line): line is number => line !== undefined);
 
-  const file = fs.readFileSync(testCase.location.file, { encoding: 'utf8' });
+  let file: string;
+  try {
+    file = fs.readFileSync(testCase.location.file, { encoding: 'utf8' });
+  } catch (_e) {
+    // The spec file may no longer exist, e.g. if it was generated for the run.
+    return [];
+  }
   const fileLines = file.split(/\r?\n/);
 
   const lines: Set<string> = new Set();
