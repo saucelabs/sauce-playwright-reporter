@@ -12,6 +12,7 @@ import {
 import {
   Reporter,
   FullConfig,
+  FullProject,
   Suite as PlaywrightSuite,
   TestCase,
   TestError,
@@ -87,7 +88,7 @@ const getCredentials = function (): Credentials {
 };
 
 export default class SauceReporter implements Reporter {
-  projects: { [k: string]: any };
+  projects: { [k: string]: FullProject };
 
   buildName: string;
   tags: string[];
@@ -286,7 +287,7 @@ export default class SauceReporter implements Reporter {
 
     try {
       await this.testRunsApi?.create([req]);
-    } catch (e: any) {
+    } catch (e) {
       console.warn('failed to send report to insights: ', e);
     }
   }
